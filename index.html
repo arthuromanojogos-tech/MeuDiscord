@@ -3,34 +3,49 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
 <title>Meu Discord</title>
 
 <style>
+
 * {
     box-sizing: border-box;
 }
 
+html,
 body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
     font-family: Arial, sans-serif;
     background: #313338;
     color: #dbdee1;
-    margin: 0;
-    height: 100vh;
-    overflow: hidden;
+}
+
+/* =====================================================
+   BODY
+===================================================== */
+
+body {
     display: flex;
 }
 
-/* =========================
+/* =====================================================
    SIDEBAR
-========================= */
+===================================================== */
 
 .sidebar {
     width: 280px;
+    height: 100vh;
+    flex-shrink: 0;
     background: #2b2d31;
     display: flex;
     flex-direction: column;
     border-right: 1px solid #1f2023;
+    z-index: 100;
 }
 
 .sidebar-header {
@@ -94,7 +109,7 @@ body {
 .profile-btn,
 .logout-btn {
     border: none;
-    padding: 6px 10px;
+    padding: 7px 10px;
     color: white;
     border-radius: 4px;
     cursor: pointer;
@@ -240,12 +255,14 @@ body {
     font-size: 14px;
 }
 
-/* =========================
+/* =====================================================
    CHAT
-========================= */
+===================================================== */
 
 .chat-area {
     flex: 1;
+    min-width: 0;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     background: #313338;
@@ -254,19 +271,23 @@ body {
 
 .chat-body-wrapper {
     flex: 1;
+    min-height: 0;
     display: flex;
     overflow: hidden;
 }
 
 .chat-main-pane {
     flex: 1;
+    min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
 .chat-header {
-    padding: 20px 24px;
+    min-height: 68px;
+    padding: 12px 20px;
     background: #313338;
     border-bottom: 1px solid #1f2023;
     font-weight: bold;
@@ -274,16 +295,26 @@ body {
     align-items: center;
     justify-content: space-between;
     font-size: 17px;
+    gap: 10px;
 }
 
 .chat-header-info {
+    min-width: 0;
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
+    overflow: hidden;
+}
+
+.chat-header-info span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .messages {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 24px;
     display: flex;
@@ -304,6 +335,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 5px;
+    min-width: 0;
 }
 
 .msg-header-line {
@@ -321,10 +353,11 @@ body {
 .msg-text {
     color: #dbdee1;
     font-size: 17px;
+    line-height: 1.4;
 }
 
 .chat-form {
-    padding: 24px;
+    padding: 18px 24px;
     background: #313338;
     display: flex;
     gap: 12px;
@@ -333,6 +366,7 @@ body {
 .chat-form input {
     border: none;
     padding: 14px;
+    min-width: 0;
     flex: 1;
     border-radius: 8px;
     background: #383a40;
@@ -352,12 +386,13 @@ body {
     font-size: 16px;
 }
 
-/* =========================
-   PAINEL
-========================= */
+/* =====================================================
+   PAINEL PERFIL
+===================================================== */
 
 .friend-profile-panel {
     width: 280px;
+    flex-shrink: 0;
     background: #2b2d31;
     border-left: 1px solid #1f2023;
     display: flex;
@@ -377,21 +412,22 @@ body {
     cursor: pointer;
 }
 
-/* =========================
+/* =====================================================
    BOTÕES CALL
-========================= */
+===================================================== */
 
 .call-btn,
 .hangup-btn,
 .screen-btn {
     border: none;
     color: white;
-    padding: 8px 16px;
+    padding: 8px 14px;
     border-radius: 6px;
     cursor: pointer;
     font-weight: bold;
     font-size: 14px;
     display: none;
+    white-space: nowrap;
 }
 
 .call-btn {
@@ -406,9 +442,9 @@ body {
     background: #5865f2;
 }
 
-/* =========================
+/* =====================================================
    CALL BANNER
-========================= */
+===================================================== */
 
 .call-status-banner {
     background: #111214;
@@ -436,9 +472,9 @@ body {
     }
 }
 
-/* =========================
+/* =====================================================
    TRANSMISSÃO
-========================= */
+===================================================== */
 
 #screen-share-container {
     display: none;
@@ -504,9 +540,9 @@ body {
     cursor: pointer;
 }
 
-/* =========================
+/* =====================================================
    MODAIS
-========================= */
+===================================================== */
 
 .modal-overlay {
     position: fixed;
@@ -516,10 +552,12 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 9999;
+    padding: 20px;
 }
 
 .call-modal {
     width: 360px;
+    max-width: 100%;
     background: #2b2d31;
     border-radius: 16px;
     padding: 28px;
@@ -593,12 +631,345 @@ body {
     display: none;
     z-index: 10000;
 }
+
+/* =====================================================
+   BOTÃO MOBILE
+===================================================== */
+
+.mobile-back-btn {
+    display: none;
+    border: none;
+    background: transparent;
+    color: white;
+    font-size: 25px;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 768px) {
+
+    body {
+        position: relative;
+        width: 100%;
+        height: 100dvh;
+    }
+
+    .sidebar {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100dvh;
+        transform: translateX(0);
+        transition: transform .25s ease;
+        z-index: 1000;
+    }
+
+    .sidebar.mobile-hidden {
+        transform: translateX(-100%);
+    }
+
+    .chat-area {
+        width: 100%;
+        height: 100dvh;
+        min-width: 0;
+    }
+
+    .chat-area.mobile-hidden {
+        display: none;
+    }
+
+    .chat-header {
+        min-height: 60px;
+        padding: 8px 10px;
+        gap: 5px;
+    }
+
+    .mobile-back-btn {
+        display: block;
+        flex-shrink: 0;
+    }
+
+    .chat-header-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .chat-header-info .avatar-img,
+    .chat-header-info .avatar-placeholder {
+        width: 36px;
+        height: 36px;
+    }
+
+    .chat-header-info .avatar-placeholder {
+        font-size: 15px;
+    }
+
+    .chat-header-info span {
+        font-size: 15px;
+    }
+
+    .chat-header > div:last-child {
+        gap: 4px !important;
+        flex-shrink: 0;
+    }
+
+    .call-btn,
+    .hangup-btn,
+    .screen-btn {
+        padding: 8px;
+        font-size: 0;
+        width: 40px;
+        height: 40px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .call-btn {
+        font-size: 20px;
+    }
+
+    .hangup-btn {
+        font-size: 19px;
+    }
+
+    .screen-btn {
+        font-size: 19px;
+    }
+
+    .messages {
+        padding: 15px 12px;
+        gap: 15px;
+    }
+
+    .message-row {
+        gap: 10px;
+    }
+
+    .message-row .avatar-img,
+    .message-row .avatar-placeholder {
+        width: 36px;
+        height: 36px;
+    }
+
+    .message-row .avatar-placeholder {
+        font-size: 15px;
+    }
+
+    .msg-user {
+        font-size: 15px;
+    }
+
+    .msg-text {
+        font-size: 15px;
+    }
+
+    .chat-form {
+        padding: 8px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        gap: 6px;
+    }
+
+    .chat-form input {
+        font-size: 16px;
+        padding: 12px;
+    }
+
+    .chat-form button {
+        padding: 0 14px;
+        font-size: 14px;
+    }
+
+    .friend-profile-panel {
+        display: none !important;
+    }
+
+    .call-status-banner {
+        padding: 7px 12px;
+        font-size: 12px;
+    }
+
+    #screen-share-container {
+        padding: 5px;
+        min-height: 180px;
+    }
+
+    #remote-screen {
+        width: 100%;
+        min-height: 150px;
+        max-height: 55vh;
+        border-radius: 4px;
+    }
+
+    .fullscreen-btn {
+        right: 10px;
+        bottom: 10px;
+        padding: 8px 11px;
+        font-size: 17px;
+    }
+
+    .screen-quality-panel {
+        left: 10px;
+        bottom: 10px;
+        padding: 5px 7px;
+        gap: 4px;
+    }
+
+    .screen-quality-panel label {
+        display: none;
+    }
+
+    #screen-quality {
+        font-size: 12px;
+        padding: 5px;
+    }
+
+    .call-modal {
+        width: 100%;
+        max-width: 340px;
+        padding: 22px;
+    }
+
+    .call-buttons {
+        flex-direction: column;
+    }
+
+    .call-buttons button {
+        min-height: 48px;
+    }
+
+    .toast {
+        left: 15px;
+        right: 15px;
+        bottom: calc(15px + env(safe-area-inset-bottom));
+        text-align: center;
+    }
+
+}
+
+/* =====================================================
+   CELULARES PEQUENOS
+===================================================== */
+
+@media (max-width: 420px) {
+
+    .sidebar-header {
+        padding: 12px;
+    }
+
+    .friends-container {
+        padding: 7px;
+    }
+
+    .friend-item {
+        padding: 10px;
+    }
+
+    .friend-name {
+        font-size: 15px;
+    }
+
+    .add-section {
+        padding: 10px;
+    }
+
+    .chat-header {
+        min-height: 56px;
+    }
+
+    .chat-form button {
+        font-size: 0;
+        width: 45px;
+        padding: 0;
+    }
+
+    .chat-form button::after {
+        content: "➤";
+        font-size: 19px;
+    }
+
+}
+
+/* =====================================================
+   FULLSCREEN
+===================================================== */
+
+#screen-share-container:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    min-height: 100vh;
+    padding: 0;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+#screen-share-container:fullscreen #remote-screen {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    min-height: 0;
+    border-radius: 0;
+    object-fit: contain;
+}
+
+#screen-share-container:fullscreen .fullscreen-btn {
+    right: 20px;
+    bottom: 20px;
+}
+
+#screen-share-container:fullscreen .screen-quality-panel {
+    left: 20px;
+    bottom: 20px;
+}
+
+/* iOS / WebKit fullscreen */
+
+#remote-screen:-webkit-full-screen {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: black;
+}
+
+/* =====================================================
+   LANDSCAPE MOBILE
+===================================================== */
+
+@media (max-width: 900px) and (orientation: landscape) {
+
+    .chat-header {
+        min-height: 50px;
+    }
+
+    #remote-screen {
+        max-height: 70vh;
+    }
+
+    .messages {
+        padding: 10px;
+    }
+
+    .chat-form {
+        padding: 5px;
+    }
+
+}
+
 </style>
 </head>
 
 <body>
 
-<div class="sidebar">
+<!-- =====================================================
+     SIDEBAR
+===================================================== -->
+
+<div class="sidebar" id="sidebar">
 
     <div class="sidebar-header">
 
@@ -630,7 +1001,7 @@ body {
                 class="profile-btn"
                 onclick="document.getElementById('avatar-file-input').click()"
             >
-                Mudar Foto
+                📷 Mudar Foto
             </button>
 
             <button
@@ -657,16 +1028,28 @@ body {
         >
 
         <button onclick="addFriend()">
-            Adicionar Amigo
+            ➕ Adicionar Amigo
         </button>
 
     </div>
 
 </div>
 
-<div class="chat-area">
+<!-- =====================================================
+     CHAT
+===================================================== -->
+
+<div class="chat-area mobile-hidden" id="chat-area">
 
     <div class="chat-header">
+
+        <button
+            id="mobile-back-btn"
+            class="mobile-back-btn"
+            onclick="mobileBackToFriends()"
+        >
+            ←
+        </button>
 
         <div
             class="chat-header-info"
@@ -722,7 +1105,9 @@ body {
 
     </div>
 
-    <!-- TRANSMISSÃO -->
+    <!-- =================================================
+         TRANSMISSÃO
+    ================================================= -->
 
     <div id="screen-share-container">
 
@@ -736,7 +1121,7 @@ body {
         <div class="screen-quality-panel">
 
             <label for="screen-quality">
-                Qualidade da transmissão:
+                Qualidade:
             </label>
 
             <select id="screen-quality">
@@ -750,7 +1135,7 @@ body {
                 </option>
 
                 <option value="1440">
-                    2K (1440p)
+                    2K
                 </option>
 
             </select>
@@ -826,9 +1211,9 @@ body {
     autoplay
 ></audio>
 
-<!-- =========================
+<!-- =====================================================
      CHAMADA RECEBIDA
-========================= -->
+===================================================== -->
 
 <div
     id="incoming-call-modal"
@@ -872,9 +1257,9 @@ body {
 
 </div>
 
-<!-- =========================
+<!-- =====================================================
      CHAMANDO
-========================= -->
+===================================================== -->
 
 <div
     id="outgoing-call-modal"
@@ -974,6 +1359,69 @@ let isMakingOffer = false;
 
 
 /* =====================================================
+   MOBILE
+===================================================== */
+
+function isMobile() {
+
+    return window.innerWidth <= 768;
+
+}
+
+
+function mobileOpenChat() {
+
+    if (!isMobile()) {
+        return;
+    }
+
+    document
+        .getElementById('sidebar')
+        .classList
+        .add('mobile-hidden');
+
+    document
+        .getElementById('chat-area')
+        .classList
+        .remove('mobile-hidden');
+
+}
+
+
+function mobileBackToFriends() {
+
+    if (!isMobile()) {
+        return;
+    }
+
+    if (isInCall || isCalling) {
+
+        if (
+            !confirm(
+                'Você está em uma chamada. Deseja sair da conversa?'
+            )
+        ) {
+            return;
+        }
+
+        endCall();
+
+    }
+
+    document
+        .getElementById('sidebar')
+        .classList
+        .remove('mobile-hidden');
+
+    document
+        .getElementById('chat-area')
+        .classList
+        .add('mobile-hidden');
+
+}
+
+
+/* =====================================================
    QUALIDADES
 ===================================================== */
 
@@ -998,6 +1446,7 @@ const SCREEN_QUALITIES = {
     }
 
 };
+
 
 function getSelectedScreenQuality() {
 
@@ -1877,6 +2326,22 @@ function openChat(
         currentRoom
     );
 
+
+    /*
+     * MOBILE
+     */
+
+    mobileOpenChat();
+
+
+    setTimeout(() => {
+
+        document
+            .getElementById('message-input')
+            ?.focus();
+
+    }, 150);
+
 }
 
 
@@ -1950,10 +2415,6 @@ async function setupPeerConnection() {
         );
 
 
-    /*
-     * Microfone.
-     */
-
     if (localStream) {
 
         localStream
@@ -1971,10 +2432,6 @@ async function setupPeerConnection() {
 
     }
 
-
-    /*
-     * Recebe áudio/vídeo remoto.
-     */
 
     peerConnection.ontrack =
         async event => {
@@ -2017,7 +2474,7 @@ async function setupPeerConnection() {
                 } catch (error) {
 
                     console.warn(
-                        'Autoplay do vídeo bloqueado:',
+                        'Autoplay bloqueado:',
                         error
                     );
 
@@ -2056,11 +2513,6 @@ async function setupPeerConnection() {
                     );
 
 
-                /*
-                 * Mantém o áudio da chamada
-                 * separado do vídeo.
-                 */
-
                 if (
                     audio.srcObject !==
                     stream
@@ -2082,10 +2534,6 @@ async function setupPeerConnection() {
 
         };
 
-
-    /*
-     * ICE.
-     */
 
     peerConnection.onicecandidate =
         event => {
@@ -2123,10 +2571,8 @@ async function setupPeerConnection() {
                 return;
             }
 
-
             const state =
                 peerConnection.connectionState;
-
 
             console.log(
                 'WebRTC:',
@@ -2140,17 +2586,6 @@ async function setupPeerConnection() {
 
                 showToast(
                     'A conexão WebRTC falhou.'
-                );
-
-            }
-
-
-            if (
-                state === 'disconnected'
-            ) {
-
-                console.warn(
-                    'WebRTC desconectado.'
                 );
 
             }
@@ -2261,7 +2696,7 @@ async function renegotiate() {
 
 
 /* =====================================================
-   INICIAR CHAMADA
+   INICIAR CALL
 ===================================================== */
 
 async function startCall() {
@@ -2284,7 +2719,7 @@ async function startCall() {
     ) {
 
         alert(
-            'Seu navegador/app não disponibiliza acesso ao microfone.'
+            'Seu navegador não disponibiliza acesso ao microfone.'
         );
 
         return;
@@ -2353,7 +2788,7 @@ async function startCall() {
 
 
         alert(
-            'Não foi possível acessar o seu microfone.\n\n' +
+            'Não foi possível acessar o microfone.\n\n' +
             'Erro: ' +
             error.message
         );
@@ -2467,11 +2902,6 @@ async function acceptIncomingCall() {
         false;
 
 
-    /*
-     * Se a pessoa estiver em outro chat,
-     * muda automaticamente para quem ligou.
-     */
-
     const incomingFriend =
         data.sender;
 
@@ -2513,10 +2943,6 @@ async function acceptIncomingCall() {
     }
 
 
-    /*
-     * Garante que o room usado é o da chamada.
-     */
-
     currentRoom =
         data.room;
 
@@ -2527,7 +2953,7 @@ async function acceptIncomingCall() {
     ) {
 
         showToast(
-            'Seu navegador/app não permite acesso ao microfone.'
+            'Seu navegador não permite acesso ao microfone.'
         );
 
         socket.emit(
@@ -2620,9 +3046,7 @@ async function acceptIncomingCall() {
         );
 
 
-        setInCallUI(
-            true
-        );
+        setInCallUI(true);
 
 
     } catch (error) {
@@ -2744,9 +3168,7 @@ function cancelOutgoingCall() {
     );
 
 
-    setInCallUI(
-        false
-    );
+    setInCallUI(false);
 
 
     showToast(
@@ -2757,7 +3179,7 @@ function cancelOutgoingCall() {
 
 
 /* =====================================================
-   UI DA CALL
+   UI CALL
 ===================================================== */
 
 function setInCallUI(active) {
@@ -2812,7 +3234,7 @@ function setInCallUI(active) {
 
 
 /* =====================================================
-   VERIFICAR GET DISPLAY MEDIA
+   SCREEN SHARE
 ===================================================== */
 
 function canShareScreen() {
@@ -2825,10 +3247,6 @@ function canShareScreen() {
 
 }
 
-
-/* =====================================================
-   COMPARTILHAR TELA
-===================================================== */
 
 async function toggleScreenShare() {
 
@@ -2855,16 +3273,10 @@ async function toggleScreenShare() {
     }
 
 
-    /*
-     * Essa verificação é importante principalmente
-     * para o aplicativo.
-     */
-
     if (!canShareScreen()) {
 
         alert(
-            'Este aplicativo/navegador não disponibiliza o compartilhamento de tela.\n\n' +
-            'Se estiver usando um app baseado em WebView, ele precisa permitir a API getDisplayMedia.'
+            'Este navegador/app não disponibiliza compartilhamento de tela.'
         );
 
         return;
@@ -2883,19 +3295,6 @@ async function toggleScreenShare() {
         const quality =
             getSelectedScreenQuality();
 
-
-        /*
-         * IMPORTANTE:
-         *
-         * A qualidade é escolhida por QUEM TRANSMITE.
-         *
-         * 720p  = 1280x720
-         * 1080p = 1920x1080
-         * 2K    = 2560x1440
-         *
-         * O navegador pode entregar uma resolução menor
-         * caso a tela/captura não suporte a resolução pedida.
-         */
 
         screenStream =
             await navigator.mediaDevices
@@ -2927,12 +3326,6 @@ async function toggleScreenShare() {
 
                     },
 
-                    /*
-                     * Áudio da tela é opcional.
-                     * Alguns navegadores não permitem áudio
-                     * em determinadas fontes.
-                     */
-
                     audio: true
 
                 });
@@ -2951,10 +3344,6 @@ async function toggleScreenShare() {
 
         }
 
-
-        /*
-         * Aplique a qualidade solicitada.
-         */
 
         try {
 
@@ -2986,16 +3375,12 @@ async function toggleScreenShare() {
         } catch (error) {
 
             console.warn(
-                'Não foi possível aplicar todas as constraints:',
+                'Constraints:',
                 error
             );
 
         }
 
-
-        /*
-         * Procura o sender de vídeo.
-         */
 
         videoSender =
             peerConnection
@@ -3007,10 +3392,6 @@ async function toggleScreenShare() {
                             'video'
                 );
 
-
-        /*
-         * Cria o sender caso ainda não exista.
-         */
 
         if (!videoSender) {
 
@@ -3028,10 +3409,6 @@ async function toggleScreenShare() {
 
         }
 
-
-        /*
-         * Áudio da tela.
-         */
 
         const screenAudioTrack =
             screenStream
@@ -3074,10 +3451,6 @@ async function toggleScreenShare() {
         }
 
 
-        /*
-         * Bitrate.
-         */
-
         try {
 
             const parameters =
@@ -3108,7 +3481,7 @@ async function toggleScreenShare() {
         } catch (error) {
 
             console.warn(
-                'Não foi possível configurar bitrate:',
+                'Bitrate:',
                 error
             );
 
@@ -3132,18 +3505,8 @@ async function toggleScreenShare() {
         );
 
 
-        /*
-         * Renegocia com o outro usuário.
-         */
-
         await renegotiate();
 
-
-        /*
-         * Se o navegador mandar o evento "ended",
-         * significa que o usuário clicou em
-         * "Parar compartilhamento".
-         */
 
         videoTrack.onended =
             async () => {
@@ -3160,15 +3523,10 @@ async function toggleScreenShare() {
     } catch (error) {
 
         console.error(
-            'Erro ao compartilhar tela:',
+            'Erro ao compartilhar:',
             error
         );
 
-
-        /*
-         * Cancelar no seletor de tela
-         * não é erro real.
-         */
 
         if (
             error.name ===
@@ -3176,7 +3534,7 @@ async function toggleScreenShare() {
         ) {
 
             showToast(
-                'Compartilhamento de tela cancelado.'
+                'Compartilhamento cancelado.'
             );
 
         } else {
@@ -3213,7 +3571,6 @@ async function toggleScreenShare() {
         isSharingScreen =
             false;
 
-
         videoSender =
             null;
 
@@ -3224,7 +3581,6 @@ async function toggleScreenShare() {
         button.innerText =
             '🖥️ Compartilhar Tela';
 
-
         button.style.background =
             '#5865f2';
 
@@ -3234,7 +3590,7 @@ async function toggleScreenShare() {
 
 
 /* =====================================================
-   PARAR TRANSMISSÃO
+   PARAR SCREEN SHARE
 ===================================================== */
 
 async function stopScreenShare() {
@@ -3249,18 +3605,6 @@ async function stopScreenShare() {
     }
 
 
-    /*
-     * Guarda o sender antes de remover.
-     */
-
-    const senders =
-        peerConnection.getSenders();
-
-
-    /*
-     * Remove o vídeo da tela.
-     */
-
     if (videoSender) {
 
         try {
@@ -3269,20 +3613,10 @@ async function stopScreenShare() {
                 null
             );
 
-        } catch (error) {
-
-            console.warn(
-                error
-            );
-
-        }
+        } catch {}
 
     }
 
-
-    /*
-     * Remove o áudio da tela.
-     */
 
     if (screenAudioSender) {
 
@@ -3292,20 +3626,10 @@ async function stopScreenShare() {
                 null
             );
 
-        } catch (error) {
-
-            console.warn(
-                error
-            );
-
-        }
+        } catch {}
 
     }
 
-
-    /*
-     * Para todas as tracks.
-     */
 
     if (screenStream) {
 
@@ -3351,22 +3675,12 @@ async function stopScreenShare() {
     button.innerText =
         '🖥️ Compartilhar Tela';
 
-
     button.style.background =
         '#5865f2';
 
 
-    /*
-     * Remove a imagem local/remota da interface.
-     */
-
     hideRemoteScreen();
 
-
-    /*
-     * Renegociação avisa ao outro lado que
-     * não existe mais vídeo.
-     */
 
     if (isInCall) {
 
@@ -3393,11 +3707,6 @@ function hideRemoteScreen() {
             'remote-screen'
         );
 
-
-    /*
-     * Remove o srcObject.
-     * Isso evita deixar a última imagem congelada.
-     */
 
     try {
 
@@ -3472,9 +3781,15 @@ function cleanupCall(
     if (peerConnection) {
 
         try {
-            peerConnection.ontrack = null;
-            peerConnection.onicecandidate = null;
+
+            peerConnection.ontrack =
+                null;
+
+            peerConnection.onicecandidate =
+                null;
+
             peerConnection.close();
+
         } catch {}
 
         peerConnection =
@@ -3489,10 +3804,8 @@ function cleanupCall(
     screenAudioSender =
         null;
 
-
     pendingIceCandidates =
         [];
-
 
     isSharingScreen =
         false;
@@ -3500,12 +3813,6 @@ function cleanupCall(
     isMakingOffer =
         false;
 
-
-    /*
-     * IMPORTANTE:
-     * limpa completamente o vídeo remoto.
-     * Assim não fica a última imagem congelada.
-     */
 
     hideRemoteScreen();
 
@@ -3552,7 +3859,7 @@ function cleanupCall(
 
 
 /* =====================================================
-   DESLIGAR CALL
+   DESLIGAR
 ===================================================== */
 
 function endCall() {
@@ -3566,9 +3873,7 @@ function endCall() {
         isCalling =
             false;
 
-
         hideOutgoingCall();
-
 
         cleanupCall(false);
 
@@ -3587,10 +3892,7 @@ function endCall() {
         );
 
 
-        setInCallUI(
-            false
-        );
-
+        setInCallUI(false);
 
         return;
 
@@ -3620,15 +3922,13 @@ function endCall() {
     );
 
 
-    setInCallUI(
-        false
-    );
+    setInCallUI(false);
 
 }
 
 
 /* =====================================================
-   CALL OFFER
+   SOCKET CALL
 ===================================================== */
 
 socket.on(
@@ -3663,10 +3963,6 @@ socket.on(
     }
 );
 
-
-/* =====================================================
-   CALL ANSWER
-===================================================== */
 
 socket.on(
     'call-answer',
@@ -3711,7 +4007,7 @@ socket.on(
         } catch (error) {
 
             console.error(
-                'Erro ao receber answer:',
+                'Erro answer:',
                 error
             );
 
@@ -3720,10 +4016,6 @@ socket.on(
     }
 );
 
-
-/* =====================================================
-   CALL ACCEPTED
-===================================================== */
 
 socket.on(
     'call-accepted',
@@ -3744,10 +4036,6 @@ socket.on(
     }
 );
 
-
-/* =====================================================
-   CALL REJECTED
-===================================================== */
 
 socket.on(
     'call-rejected',
@@ -3785,10 +4073,6 @@ socket.on(
     }
 );
 
-
-/* =====================================================
-   CALL CANCELLED
-===================================================== */
 
 socket.on(
     'call-cancelled',
@@ -3840,7 +4124,7 @@ socket.on(
 
 
 /* =====================================================
-   RENEGOCIAÇÃO - RECEBER OFFER
+   RENEGOCIAÇÃO
 ===================================================== */
 
 socket.on(
@@ -3902,7 +4186,7 @@ socket.on(
         } catch (error) {
 
             console.error(
-                'Erro na renegociação:',
+                'Erro renegociação:',
                 error
             );
 
@@ -3911,10 +4195,6 @@ socket.on(
     }
 );
 
-
-/* =====================================================
-   RENEGOTIATION ANSWER
-===================================================== */
 
 socket.on(
     'renegotiation-answer',
@@ -3943,11 +4223,10 @@ socket.on(
 
             await flushPendingIce();
 
-
         } catch (error) {
 
             console.error(
-                'Erro na resposta da renegociação:',
+                'Erro renegociação answer:',
                 error
             );
 
@@ -4011,10 +4290,6 @@ socket.on(
 );
 
 
-/* =====================================================
-   ICE PENDENTE
-===================================================== */
-
 async function flushPendingIce() {
 
     if (
@@ -4054,7 +4329,7 @@ async function flushPendingIce() {
         } catch (error) {
 
             console.error(
-                'Erro adicionando ICE pendente:',
+                'Erro ICE pendente:',
                 error
             );
 
@@ -4066,7 +4341,7 @@ async function flushPendingIce() {
 
 
 /* =====================================================
-   OUTRO USUÁRIO DESLIGOU
+   HANG UP REMOTO
 ===================================================== */
 
 socket.on(
@@ -4075,29 +4350,22 @@ socket.on(
 
         cleanupCall(false);
 
-
         isCalling =
             false;
 
-
         hideOutgoingCall();
 
-
         hideIncomingCall();
-
 
         isIncomingPending =
             false;
 
-
         pendingIncomingOffer =
             null;
-
 
         setInCallUI(
             false
         );
-
 
         showToast(
             'A chamada foi encerrada.'
@@ -4129,12 +4397,6 @@ async function toggleFullscreen() {
         if (
             !document.fullscreenElement
         ) {
-
-            /*
-             * Tenta colocar o container inteiro
-             * em tela cheia.
-             * Assim os controles continuam disponíveis.
-             */
 
             if (
                 container.requestFullscreen
@@ -4181,7 +4443,7 @@ async function toggleFullscreen() {
 
 
 /* =====================================================
-   AMIGOS
+   AMIGOS SOCKET
 ===================================================== */
 
 socket.on(
@@ -4204,6 +4466,20 @@ socket.on(
         ) {
 
             closeActiveChat();
+
+            if (isMobile()) {
+
+                document
+                    .getElementById('sidebar')
+                    .classList
+                    .remove('mobile-hidden');
+
+                document
+                    .getElementById('chat-area')
+                    .classList
+                    .add('mobile-hidden');
+
+            }
 
             alert(
                 `O usuário ${userWhoRemoved} desfez a amizade com você.`
@@ -4335,11 +4611,6 @@ function appendMessage(data) {
     `;
 
 
-    /*
-     * Usa textContent para não permitir
-     * HTML enviado pelo usuário.
-     */
-
     li.querySelector(
         '.msg-text'
     ).textContent =
@@ -4379,6 +4650,37 @@ window.addEventListener(
 
                 }
             );
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   REDIMENSIONAMENTO
+===================================================== */
+
+window.addEventListener(
+    'resize',
+    () => {
+
+        /*
+         * Se sair do mobile,
+         * remove os estados mobile.
+         */
+
+        if (!isMobile()) {
+
+            document
+                .getElementById('sidebar')
+                .classList
+                .remove('mobile-hidden');
+
+            document
+                .getElementById('chat-area')
+                .classList
+                .remove('mobile-hidden');
 
         }
 
