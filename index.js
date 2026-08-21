@@ -691,7 +691,23 @@ io.on('connection', (socket) => {
         socket.to(data.room).emit('hang-up');
     });
 
+// ===============================
+// TRANSMISSÃO DE TELA PAROU
+// ===============================
 
+socket.on('screen-stopped', (data) => {
+
+    if (!data || !data.room) {
+        return;
+    }
+
+    socket.to(data.room).emit(
+        'screen-stopped'
+    );
+
+});
+
+    
     // ===============================
     // DESCONECTOU
     // ===============================
