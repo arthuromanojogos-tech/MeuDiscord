@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Meu Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #313338; color: #dbdee1; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #2b2d31; padding: 30px; border-radius: 8px; width: 300px; display: flex; flex-direction: column; gap: 15px; }
+        input { border: none; padding: 10px; border-radius: 4px; background: #383a40; color: white; font-size: 16px; outline: none; }
+        button { background: #5865f2; border: none; padding: 10px; color: white; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #4752c4; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Entrar no Chat</h2>
+        <input id="user" placeholder="Usuário">
+        <input id="pass" type="password" placeholder="Senha">
+        <button onclick="auth('login')">Entrar</button>
+        <button onclick="auth('register')">Criar Conta</button>
+    </div>
+    <script>
+        async function auth(type) {
+            const username = document.getElementById('user').value;
+            const password = document.getElementById('pass').value;
+
+            const res = await fetch('/' + type, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username, password })
+            });
+
+            if (res.ok) {
+                // Salva o usuário no navegador e vai para o chat
+                localStorage.setItem('chat_username', username);
+                window.location.href = '/'; 
+            } else {
+                const errText = await res.text();
+                alert('Erro: ' + errText);
+            }
+        }
+    </script>
+</body>
+</html>
