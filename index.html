@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -406,37 +407,6 @@ body {
 }
 
 /* =========================
-   QUALIDADE
-========================= */
-
-.quality-container {
-    display: none;
-    align-items: center;
-    gap: 7px;
-}
-
-.quality-container label {
-    color: #b5bac1;
-    font-size: 12px;
-    font-weight: bold;
-}
-
-#quality-select {
-    background: #1e1f22;
-    color: white;
-    border: 1px solid #4e5058;
-    border-radius: 5px;
-    padding: 7px 8px;
-    outline: none;
-    cursor: pointer;
-    font-size: 13px;
-}
-
-#quality-select:hover {
-    border-color: #5865f2;
-}
-
-/* =========================
    CALL BANNER
 ========================= */
 
@@ -467,7 +437,7 @@ body {
 }
 
 /* =========================
-   TELA
+   TRANSMISSÃO
 ========================= */
 
 #screen-share-container {
@@ -482,6 +452,7 @@ body {
 #remote-screen {
     width: 100%;
     max-height: 500px;
+    min-height: 200px;
     background: black;
     border-radius: 6px;
     object-fit: contain;
@@ -498,6 +469,36 @@ body {
     padding: 9px 13px;
     cursor: pointer;
     font-size: 18px;
+    z-index: 5;
+}
+
+.screen-quality-panel {
+    position: absolute;
+    left: 20px;
+    bottom: 20px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,.78);
+    padding: 8px 10px;
+    border-radius: 6px;
+}
+
+.screen-quality-panel label {
+    color: white;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+#screen-quality {
+    background: #2b2d31;
+    color: white;
+    border: 1px solid #4e5058;
+    border-radius: 5px;
+    padding: 6px 8px;
+    outline: none;
+    cursor: pointer;
 }
 
 /* =========================
@@ -673,36 +674,7 @@ body {
             </span>
         </div>
 
-        <div style="display:flex;gap:8px;align-items:center;">
-
-            <!-- QUALIDADE -->
-
-            <div
-                id="quality-container"
-                class="quality-container"
-            >
-
-                <label for="quality-select">
-                    Qualidade:
-                </label>
-
-                <select id="quality-select">
-
-                    <option value="1280x720">
-                        720p
-                    </option>
-
-                    <option value="1920x1080" selected>
-                        1080p
-                    </option>
-
-                    <option value="2560x1440">
-                        2K
-                    </option>
-
-                </select>
-
-            </div>
+        <div style="display:flex;gap:8px;">
 
             <button
                 id="screen-action-btn"
@@ -737,9 +709,7 @@ body {
         class="call-status-banner"
     >
 
-        <div
-            style="display:flex;align-items:center;gap:8px;"
-        >
+        <div style="display:flex;align-items:center;gap:8px;">
 
             <div class="call-dot"></div>
 
@@ -749,6 +719,8 @@ body {
 
     </div>
 
+    <!-- TRANSMISSÃO -->
+
     <div id="screen-share-container">
 
         <video
@@ -756,6 +728,30 @@ body {
             autoplay
             playsinline
         ></video>
+
+        <div class="screen-quality-panel">
+
+            <label for="screen-quality">
+                Qualidade:
+            </label>
+
+            <select id="screen-quality">
+
+                <option value="720">
+                    720p
+                </option>
+
+                <option value="1080" selected>
+                    1080p
+                </option>
+
+                <option value="1440">
+                    2K (1440p)
+                </option>
+
+            </select>
+
+        </div>
 
         <button
             class="fullscreen-btn"
@@ -825,6 +821,10 @@ body {
     autoplay
 ></audio>
 
+<!-- =========================
+     CHAMADA RECEBIDA
+========================= -->
+
 <div
     id="incoming-call-modal"
     class="modal-overlay"
@@ -866,6 +866,10 @@ body {
     </div>
 
 </div>
+
+<!-- =========================
+     CHAMANDO
+========================= -->
 
 <div
     id="outgoing-call-modal"
@@ -962,6 +966,43 @@ let pendingIceCandidates = [];
 
 
 /* =====================================================
+   QUALIDADE DA TRANSMISSÃO
+===================================================== */
+
+const SCREEN_QUALITIES = {
+
+    "720": {
+        width: 1280,
+        height: 720
+    },
+
+    "1080": {
+        width: 1920,
+        height: 1080
+    },
+
+    "1440": {
+        width: 2560,
+        height: 1440
+    }
+
+};
+
+function getSelectedScreenQuality() {
+
+    const select =
+        document.getElementById(
+            'screen-quality'
+        );
+
+    return SCREEN_QUALITIES[
+        select.value
+    ] || SCREEN_QUALITIES["1080"];
+
+}
+
+
+/* =====================================================
    WEBRTC
 ===================================================== */
 
@@ -1006,8 +1047,10 @@ function showToast(text) {
     showToast.timer =
         setTimeout(
             () => {
+
                 toast.style.display =
                     'none';
+
             },
             3000
         );
@@ -1032,10 +1075,9 @@ function createAvatarHTML(
 
         return `
             <img
-                ${
-                    isLarge
-                        ? 'style="width:90px;height:90px;border-radius:50%;object-fit:cover;"'
-                        : 'class="avatar-img"'
+                ${isLarge
+                    ? 'style="width:90px;height:90px;border-radius:50%;object-fit:cover;"'
+                    : 'class="avatar-img"'
                 }
                 src="${avatarData}"
                 alt="Avatar"
@@ -1051,10 +1093,9 @@ function createAvatarHTML(
 
     return `
         <div
-            ${
-                isLarge
-                    ? 'style="width:90px;height:90px;border-radius:50%;background:#5865f2;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:36px;margin:auto;"'
-                    : 'class="avatar-placeholder"'
+            ${isLarge
+                ? 'style="width:90px;height:90px;border-radius:50%;background:#5865f2;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:36px;margin:auto;"'
+                : 'class="avatar-placeholder"'
             }
         >
             ${initial}
@@ -1136,11 +1177,13 @@ function uploadAvatar(event) {
                         },
 
                         body: JSON.stringify({
+
                             username:
                                 currentUser,
 
                             avatar:
                                 base64Image
+
                         })
                     }
                 );
@@ -1383,10 +1426,9 @@ async function loadFriends() {
 
                     <div
                         class="unread-badge"
-                        style="${
-                            unread
-                                ? 'display:inline-block'
-                                : 'display:none'
+                        style="${unread
+                            ? 'display:inline-block'
+                            : 'display:none'
                         }"
                     >
                         ${unread}
@@ -1449,11 +1491,13 @@ async function addFriend() {
                 },
 
                 body: JSON.stringify({
+
                     username:
                         currentUser,
 
                     friendName:
                         friendName
+
                 })
             }
         );
@@ -1501,11 +1545,13 @@ async function acceptFriend(
                 },
 
                 body: JSON.stringify({
+
                     username:
                         currentUser,
 
                     friendName:
                         friendName
+
                 })
             }
         );
@@ -1558,11 +1604,13 @@ async function removeFriend(
                 },
 
                 body: JSON.stringify({
+
                     username:
                         currentUser,
 
                     friendName:
                         friendName
+
                 })
             }
         );
@@ -1594,11 +1642,13 @@ async function removeFriend(
         socket.emit(
             'force close chat',
             {
+
                 targetUser:
                     friendName,
 
                 currentUser:
                     currentUser
+
             }
         );
 
@@ -1661,11 +1711,6 @@ function closeActiveChat() {
 
     document.getElementById(
         'screen-action-btn'
-    ).style.display = 'none';
-
-
-    document.getElementById(
-        'quality-container'
     ).style.display = 'none';
 
 
@@ -1756,12 +1801,6 @@ function openChat(
 
 
     document.getElementById(
-        'quality-container'
-    ).style.display =
-        'none';
-
-
-    document.getElementById(
         'call-banner'
     ).style.display =
         'none';
@@ -1834,12 +1873,8 @@ function sendMessage(e) {
         );
 
 
-    const message =
-        input.value.trim();
-
-
     if (
-        !message ||
+        !input.value ||
         !currentChatFriend ||
         !currentRoom
     ) {
@@ -1860,7 +1895,7 @@ function sendMessage(e) {
                 currentChatFriend,
 
             message:
-                message,
+                input.value,
 
             room:
                 currentRoom
@@ -1875,7 +1910,7 @@ function sendMessage(e) {
 
 
 /* =====================================================
-   PEER CONNECTION
+   WEBRTC
 ===================================================== */
 
 async function setupPeerConnection() {
@@ -2114,8 +2149,11 @@ async function startCall() {
         localStream =
             await navigator.mediaDevices
                 .getUserMedia({
+
                     audio: true,
+
                     video: false
+
                 });
 
 
@@ -2174,7 +2212,7 @@ async function startCall() {
 
 
 /* =====================================================
-   MODAL CHAMANDO
+   MODAL - CHAMANDO
 ===================================================== */
 
 function showOutgoingCall() {
@@ -2204,7 +2242,7 @@ function hideOutgoingCall() {
 
 
 /* =====================================================
-   MODAL RECEBENDO
+   MODAL - RECEBENDO
 ===================================================== */
 
 function showIncomingCall(data) {
@@ -2280,8 +2318,11 @@ async function acceptIncomingCall() {
         localStream =
             await navigator.mediaDevices
                 .getUserMedia({
+
                     audio: true,
+
                     video: false
+
                 });
 
 
@@ -2354,7 +2395,9 @@ async function acceptIncomingCall() {
         );
 
 
-        cleanupCall(false);
+        cleanupCall(
+            false
+        );
 
 
         socket.emit(
@@ -2444,7 +2487,9 @@ function cancelOutgoingCall() {
     hideOutgoingCall();
 
 
-    cleanupCall(false);
+    cleanupCall(
+        false
+    );
 
 
     socket.emit(
@@ -2512,14 +2557,6 @@ function setInCallUI(active) {
 
 
     document.getElementById(
-        'quality-container'
-    ).style.display =
-        active
-            ? 'flex'
-            : 'none';
-
-
-    document.getElementById(
         'call-banner'
     ).style.display =
         active
@@ -2535,33 +2572,6 @@ function setInCallUI(active) {
             'none';
 
     }
-
-}
-
-
-/* =====================================================
-   QUALIDADE DA TRANSMISSÃO
-===================================================== */
-
-function getSelectedResolution() {
-
-    const select =
-        document.getElementById(
-            'quality-select'
-        );
-
-    const [
-        width,
-        height
-    ] =
-        select.value
-            .split('x')
-            .map(Number);
-
-    return {
-        width,
-        height
-    };
 
 }
 
@@ -2596,35 +2606,48 @@ async function toggleScreenShare() {
 
         if (!isSharingScreen) {
 
-            const resolution =
-                getSelectedResolution();
+            const quality =
+                getSelectedScreenQuality();
 
+
+            /*
+             * Solicita a tela ao navegador/Electron.
+             *
+             * O ideal é pedir uma resolução maior
+             * para depois aplicar a qualidade escolhida.
+             */
 
             screenStream =
                 await navigator.mediaDevices
                     .getDisplayMedia({
 
                         video: {
+
                             width: {
                                 ideal:
-                                    resolution.width,
+                                    quality.width,
 
                                 max:
-                                    resolution.width
+                                    quality.width
                             },
 
                             height: {
+
                                 ideal:
-                                    resolution.height,
+                                    quality.height,
 
                                 max:
-                                    resolution.height
+                                    quality.height
                             },
 
                             frameRate: {
+
                                 ideal: 30,
+
                                 max: 60
+
                             }
+
                         },
 
                         audio: true
@@ -2637,34 +2660,61 @@ async function toggleScreenShare() {
                     .getVideoTracks()[0];
 
 
+            if (!videoTrack) {
+
+                throw new Error(
+                    'Nenhuma tela foi selecionada.'
+                );
+
+            }
+
+
             /*
-             * Tenta aplicar exatamente
-             * a qualidade escolhida.
+             * Aplica a resolução escolhida
+             * diretamente na faixa.
              */
 
             try {
 
                 await videoTrack.applyConstraints({
 
-                    width:
-                        resolution.width,
+                    width: {
+                        ideal:
+                            quality.width,
 
-                    height:
-                        resolution.height,
+                        max:
+                            quality.width
+                    },
 
-                    frameRate: 30
+                    height: {
+                        ideal:
+                            quality.height,
+
+                        max:
+                            quality.height
+                    },
+
+                    frameRate: {
+                        ideal: 30,
+
+                        max: 60
+                    }
 
                 });
 
-            } catch (error) {
+            } catch (constraintError) {
 
                 console.warn(
-                    'Não foi possível aplicar a resolução exata:',
-                    error
+                    'Não foi possível aplicar todas as restrições:',
+                    constraintError
                 );
 
             }
 
+
+            /*
+             * Procura o sender de vídeo.
+             */
 
             videoSender =
                 peerConnection
@@ -2676,6 +2726,10 @@ async function toggleScreenShare() {
                                 'video'
                     );
 
+
+            /*
+             * Se não existir, cria.
+             */
 
             if (!videoSender) {
 
@@ -2693,6 +2747,74 @@ async function toggleScreenShare() {
 
             }
 
+
+            /*
+             * Tenta limitar o bitrate
+             * de acordo com a qualidade.
+             */
+
+            try {
+
+                const parameters =
+                    videoSender.getParameters();
+
+                if (!parameters.encodings) {
+
+                    parameters.encodings = [
+                        {}
+                    ];
+
+                }
+
+                const selected =
+                    document.getElementById(
+                        'screen-quality'
+                    ).value;
+
+
+                if (selected === '720') {
+
+                    parameters.encodings[0].maxBitrate =
+                        2_500_000;
+
+                }
+
+                if (selected === '1080') {
+
+                    parameters.encodings[0].maxBitrate =
+                        6_000_000;
+
+                }
+
+                if (selected === '1440') {
+
+                    parameters.encodings[0].maxBitrate =
+                        12_000_000;
+
+                }
+
+
+                parameters.encodings[0].maxFramerate =
+                    30;
+
+
+                await videoSender.setParameters(
+                    parameters
+                );
+
+            } catch (bitrateError) {
+
+                console.warn(
+                    'Não foi possível aplicar bitrate:',
+                    bitrateError
+                );
+
+            }
+
+
+            /*
+             * Áudio da tela.
+             */
 
             const screenAudioTrack =
                 screenStream
@@ -2714,15 +2836,30 @@ async function toggleScreenShare() {
 
 
             button.innerText =
-                '🛑 Parar Tela';
+                `🛑 Parar Tela (${quality.height}p)`;
 
 
             button.style.background =
                 '#ed4245';
 
 
+            showToast(
+                `Transmitindo em ${quality.height}p`
+            );
+
+
+            /*
+             * Renegociação.
+             */
+
             await renegotiate();
 
+
+            /*
+             * Se o usuário clicar no botão
+             * "Parar compartilhamento" do
+             * próprio navegador, também para.
+             */
 
             videoTrack.onended =
                 () => {
@@ -2735,6 +2872,7 @@ async function toggleScreenShare() {
 
                 };
 
+
         } else {
 
             await stopScreenShare();
@@ -2744,9 +2882,28 @@ async function toggleScreenShare() {
     } catch (error) {
 
         console.error(
-            'Erro ao compartilhar:',
+            'Erro ao compartilhar tela:',
             error
         );
+
+
+        if (
+            error.name ===
+            'NotAllowedError'
+        ) {
+
+            showToast(
+                'Compartilhamento de tela cancelado.'
+            );
+
+        } else {
+
+            alert(
+                'Não foi possível compartilhar a tela: ' +
+                error.message
+            );
+
+        }
 
 
         if (screenStream) {
@@ -2783,7 +2940,8 @@ async function stopScreenShare() {
 
 
     const senders =
-        peerConnection.getSenders();
+        peerConnection
+            .getSenders();
 
 
     for (
@@ -2816,7 +2974,9 @@ async function stopScreenShare() {
             .getTracks()
             .forEach(
                 track => {
+
                     track.stop();
+
                 }
             );
 
@@ -2878,7 +3038,9 @@ function cleanupCall(
         screenStream
             .getTracks()
             .forEach(
-                track => track.stop()
+                track => {
+                    track.stop();
+                }
             );
 
         screenStream =
@@ -2892,7 +3054,9 @@ function cleanupCall(
         localStream
             .getTracks()
             .forEach(
-                track => track.stop()
+                track => {
+                    track.stop();
+                }
             );
 
         localStream =
@@ -2941,6 +3105,23 @@ function cleanupCall(
         'none';
 
 
+    const screenButton =
+        document.getElementById(
+            'screen-action-btn'
+        );
+
+
+    if (screenButton) {
+
+        screenButton.innerText =
+            '🖥️ Compartilhar Tela';
+
+        screenButton.style.background =
+            '#5865f2';
+
+    }
+
+
     if (
         notifyRemote &&
         currentRoom
@@ -2978,7 +3159,9 @@ function endCall() {
         hideOutgoingCall();
 
 
-        cleanupCall(false);
+        cleanupCall(
+            false
+        );
 
 
         socket.emit(
@@ -2995,7 +3178,10 @@ function endCall() {
         );
 
 
-        setInCallUI(false);
+        setInCallUI(
+            false
+        );
+
 
         return;
 
@@ -3004,14 +3190,18 @@ function endCall() {
 
     if (!isInCall) {
 
-        cleanupCall(false);
+        cleanupCall(
+            false
+        );
 
         return;
 
     }
 
 
-    cleanupCall(false);
+    cleanupCall(
+        false
+    );
 
 
     socket.emit(
@@ -3023,7 +3213,9 @@ function endCall() {
     );
 
 
-    setInCallUI(false);
+    setInCallUI(
+        false
+    );
 
 }
 
@@ -3166,10 +3358,14 @@ socket.on(
         hideOutgoingCall();
 
 
-        cleanupCall(false);
+        cleanupCall(
+            false
+        );
 
 
-        setInCallUI(false);
+        setInCallUI(
+            false
+        );
 
 
         showToast(
@@ -3216,9 +3412,13 @@ socket.on(
 
         if (isInCall) {
 
-            cleanupCall(false);
+            cleanupCall(
+                false
+            );
 
-            setInCallUI(false);
+            setInCallUI(
+                false
+            );
 
             showToast(
                 'A chamada foi encerrada.'
@@ -3365,7 +3565,8 @@ socket.on(
         try {
 
             if (
-                peerConnection.remoteDescription
+                peerConnection
+                    .remoteDescription
             ) {
 
                 await peerConnection
@@ -3449,21 +3650,29 @@ async function flushPendingIce() {
 
 
 /* =====================================================
-   HANG UP
+   OUTRO USUÁRIO DESLIGOU
 ===================================================== */
 
 socket.on(
     'hang-up',
     () => {
 
-        cleanupCall(false);
+        cleanupCall(
+            false
+        );
+
 
         isCalling =
             false;
 
+
         hideOutgoingCall();
 
-        setInCallUI(false);
+
+        setInCallUI(
+            false
+        );
+
 
         showToast(
             'A chamada foi encerrada.'
@@ -3660,17 +3869,13 @@ function appendMessage(data) {
 
             </div>
 
-            <span class="msg-text"></span>
+            <span class="msg-text">
+                ${data.message}
+            </span>
 
         </div>
 
     `;
-
-
-    li.querySelector(
-        '.msg-text'
-    ).textContent =
-        data.message;
 
 
     messages.appendChild(
@@ -3723,3 +3928,4 @@ loadFriends();
 
 </body>
 </html>
+```
