@@ -665,10 +665,7 @@ io.on('connection', (socket) => {
 
         const username = activeUsers[socket.id];
 
-        // Se estava em uma chamada,
-        // avisa imediatamente o outro usuário.
         if (socket.callRoom) {
-
             socket.to(socket.callRoom).emit('hang-up');
         }
 
@@ -682,8 +679,8 @@ io.on('connection', (socket) => {
 // SERVIDOR
 // ===============================
 
-server.listen(3000, () => {
-    console.log(
-        'Servidor rodando em http://localhost:3000'
-    );
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
 });
