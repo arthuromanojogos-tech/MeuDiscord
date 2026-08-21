@@ -534,6 +534,8 @@ io.on('connection', (socket) => {
 
                         if (!err) {
 
+                            // Envia para todos que estão
+                            // dentro da sala da conversa.
                             io.to(data.room).emit(
                                 'private message',
                                 {
@@ -542,14 +544,47 @@ io.on('connection', (socket) => {
                                 }
                             );
 
-                            io.to(data.receiver).emit(
-                                'private message',
-                                {
-                                    ...data,
-                                    avatar: senderAvatar
+
+                            // Se o destinatário estiver conectado,
+                            // mas NÃO estiver dentro da sala,
+                            // envia a mensagem diretamente para ele.
+                            const receiverSockets =
+                                io.sockets.adapter.rooms.get(
+                                    data.receiver
+                                );
+
+                            if (receiverSockets) {
+
+                                for (const socketId of receiverSockets) {
+
+                                    const receiverSocket =
+                                        io.sockets.sockets.get(
+                                            socketId
+                                        );
+
+                                    if (
+                                        receiverSocket &&
+                                        !receiverSocket.rooms.has(
+                                            data.room
+                                        )
+                                    ) {
+
+                                        receiverSocket.emit(
+                                            'private message',
+                                            {
+                                                ...data,
+                                                avatar: senderAvatar
+                                            }
+                                        );
+
+                                    }
+
                                 }
-                            );
+
+                            }
+
                         }
+
                     }
                 );
 
