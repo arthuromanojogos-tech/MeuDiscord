@@ -1,44 +1,406 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
+
     <meta charset="UTF-8">
-    <title>Login - Meu Chat</title>
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    >
+
+    <title>Meu Chat - Login</title>
+
     <style>
-        body { font-family: Arial, sans-serif; background: #313338; color: #dbdee1; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #2b2d31; padding: 30px; border-radius: 8px; width: 300px; display: flex; flex-direction: column; gap: 15px; }
-        input { border: none; padding: 10px; border-radius: 4px; background: #383a40; color: white; font-size: 16px; outline: none; }
-        button { background: #5865f2; border: none; padding: 10px; color: white; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        button:hover { background: #4752c4; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h2>Entrar no Chat</h2>
-        <input id="user" placeholder="Usuário">
-        <input id="pass" type="password" placeholder="Senha">
-        <button onclick="auth('login')">Entrar</button>
-        <button onclick="auth('register')">Criar Conta</button>
-    </div>
-    <script>
-        async function auth(type) {
-            const username = document.getElementById('user').value;
-            const password = document.getElementById('pass').value;
 
-            const res = await fetch('/' + type, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username, password })
-            });
-
-            if (res.ok) {
-                // Salva o usuário no navegador e vai para o chat
-                localStorage.setItem('chat_username', username);
-                window.location.href = '/'; 
-            } else {
-                const errText = await res.text();
-                alert('Erro: ' + errText);
-            }
+        * {
+            box-sizing: border-box;
         }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100%;
+            font-family: Arial, sans-serif;
+            background: #313338;
+            color: #dbdee1;
+        }
+
+        body {
+            min-height: 100dvh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .card {
+
+            background: #2b2d31;
+
+            width: 100%;
+            max-width: 380px;
+
+            padding: 30px 24px;
+
+            border-radius: 12px;
+
+            display: flex;
+            flex-direction: column;
+
+            gap: 15px;
+
+            box-shadow:
+                0 10px 40px rgba(0, 0, 0, 0.35);
+
+        }
+
+        h2 {
+            text-align: center;
+            margin: 0 0 10px;
+            color: white;
+        }
+
+        input {
+
+            width: 100%;
+
+            border: none;
+
+            padding: 14px;
+
+            border-radius: 6px;
+
+            background: #383a40;
+
+            color: white;
+
+            font-size: 16px;
+
+            outline: none;
+
+        }
+
+        input:focus {
+            outline: 2px solid #5865f2;
+        }
+
+        button {
+
+            width: 100%;
+
+            border: none;
+
+            padding: 14px;
+
+            color: white;
+
+            border-radius: 6px;
+
+            font-size: 15px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+            background: #5865f2;
+
+        }
+
+        button:hover {
+            background: #4752c4;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #registerBtn {
+            background: #3ba55c;
+        }
+
+        #registerBtn:hover {
+            background: #2d7d46;
+        }
+
+        #message {
+
+            min-height: 20px;
+
+            text-align: center;
+
+            font-size: 14px;
+
+        }
+
+        @media (max-width: 480px) {
+
+            body {
+                padding: 15px;
+            }
+
+            .card {
+                padding: 25px 20px;
+                border-radius: 10px;
+            }
+
+            input,
+            button {
+                font-size: 16px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="card">
+
+        <h2 id="title">
+            Entrar no Chat
+        </h2>
+
+        <input
+            id="user"
+            type="text"
+            placeholder="Usuário"
+            autocomplete="username"
+        >
+
+        <input
+            id="pass"
+            type="password"
+            placeholder="Senha"
+            autocomplete="current-password"
+        >
+
+        <button onclick="auth('login')">
+            Entrar
+        </button>
+
+        <button
+            id="registerBtn"
+            onclick="auth('register')"
+        >
+            Criar Conta
+        </button>
+
+        <div id="message"></div>
+
+    </div>
+
+
+    <script>
+
+        const userInput =
+            document.getElementById('user');
+
+        const passInput =
+            document.getElementById('pass');
+
+        const message =
+            document.getElementById('message');
+
+
+        async function auth(type) {
+
+            const username =
+                userInput.value.trim();
+
+            const password =
+                passInput.value;
+
+
+            if (!username || !password) {
+
+                showMessage(
+                    'Preencha usuário e senha.',
+                    true
+                );
+
+                return;
+            }
+
+
+            try {
+
+                const res =
+                    await fetch('/' + type, {
+
+                        method: 'POST',
+
+                        headers: {
+                            'Content-Type':
+                                'application/json'
+                        },
+
+                        credentials: 'include',
+
+                        body: JSON.stringify({
+                            username,
+                            password
+                        })
+
+                    });
+
+
+                const text =
+                    await res.text();
+
+
+                if (!res.ok) {
+
+                    showMessage(
+                        text,
+                        true
+                    );
+
+                    return;
+                }
+
+
+                if (type === 'register') {
+
+                    showMessage(
+                        'Conta criada! Entrando...',
+                        false
+                    );
+
+                    setTimeout(() => {
+
+                        loginAfterRegister(
+                            username,
+                            password
+                        );
+
+                    }, 500);
+
+                    return;
+                }
+
+
+                // Login correto
+                localStorage.setItem(
+                    'chat_username',
+                    username
+                );
+
+                window.location.replace('/');
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                showMessage(
+                    'Erro de conexão com o servidor.',
+                    true
+                );
+
+            }
+
+        }
+
+
+        async function loginAfterRegister(
+            username,
+            password
+        ) {
+
+            try {
+
+                const res =
+                    await fetch('/login', {
+
+                        method: 'POST',
+
+                        headers: {
+                            'Content-Type':
+                                'application/json'
+                        },
+
+                        credentials: 'include',
+
+                        body: JSON.stringify({
+                            username,
+                            password
+                        })
+
+                    });
+
+
+                if (!res.ok) {
+
+                    showMessage(
+                        'Conta criada. Faça login.',
+                        false
+                    );
+
+                    return;
+                }
+
+
+                localStorage.setItem(
+                    'chat_username',
+                    username
+                );
+
+                window.location.replace('/');
+
+            }
+
+            catch (error) {
+
+                showMessage(
+                    'Conta criada. Faça login.',
+                    false
+                );
+
+            }
+
+        }
+
+
+        function showMessage(
+            text,
+            error
+        ) {
+
+            message.textContent = text;
+
+            message.style.color =
+                error
+                    ? '#ed4245'
+                    : '#3ba55c';
+
+        }
+
+
+        // Enter no celular/PC
+        document.addEventListener(
+            'keydown',
+            event => {
+
+                if (
+                    event.key === 'Enter'
+                ) {
+
+                    auth('login');
+
+                }
+
+            }
+        );
+
     </script>
+
 </body>
+
 </html>
