@@ -406,6 +406,37 @@ body {
 }
 
 /* =========================
+   QUALIDADE
+========================= */
+
+.quality-container {
+    display: none;
+    align-items: center;
+    gap: 7px;
+}
+
+.quality-container label {
+    color: #b5bac1;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+#quality-select {
+    background: #1e1f22;
+    color: white;
+    border: 1px solid #4e5058;
+    border-radius: 5px;
+    padding: 7px 8px;
+    outline: none;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+#quality-select:hover {
+    border-color: #5865f2;
+}
+
+/* =========================
    CALL BANNER
 ========================= */
 
@@ -450,7 +481,7 @@ body {
 
 #remote-screen {
     width: 100%;
-    max-height: 350px;
+    max-height: 500px;
     background: black;
     border-radius: 6px;
     object-fit: contain;
@@ -470,7 +501,7 @@ body {
 }
 
 /* =========================
-   MODAIS DE CHAMADA
+   MODAIS
 ========================= */
 
 .modal-overlay {
@@ -563,10 +594,6 @@ body {
 
 <body>
 
-<!-- =========================
-     SIDEBAR
-========================= -->
-
 <div class="sidebar">
 
     <div class="sidebar-header">
@@ -633,10 +660,6 @@ body {
 
 </div>
 
-<!-- =========================
-     CHAT
-========================= -->
-
 <div class="chat-area">
 
     <div class="chat-header">
@@ -650,7 +673,36 @@ body {
             </span>
         </div>
 
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+
+            <!-- QUALIDADE -->
+
+            <div
+                id="quality-container"
+                class="quality-container"
+            >
+
+                <label for="quality-select">
+                    Qualidade:
+                </label>
+
+                <select id="quality-select">
+
+                    <option value="1280x720">
+                        720p
+                    </option>
+
+                    <option value="1920x1080" selected>
+                        1080p
+                    </option>
+
+                    <option value="2560x1440">
+                        2K
+                    </option>
+
+                </select>
+
+            </div>
 
             <button
                 id="screen-action-btn"
@@ -696,8 +748,6 @@ body {
         </div>
 
     </div>
-
-    <!-- TRANSMISSÃO -->
 
     <div id="screen-share-container">
 
@@ -775,10 +825,6 @@ body {
     autoplay
 ></audio>
 
-<!-- =========================
-     CHAMADA RECEBIDA
-========================= -->
-
 <div
     id="incoming-call-modal"
     class="modal-overlay"
@@ -820,10 +866,6 @@ body {
     </div>
 
 </div>
-
-<!-- =========================
-     CHAMANDO
-========================= -->
 
 <div
     id="outgoing-call-modal"
@@ -969,6 +1011,7 @@ function showToast(text) {
             },
             3000
         );
+
 }
 
 
@@ -989,9 +1032,10 @@ function createAvatarHTML(
 
         return `
             <img
-                ${isLarge
-                    ? 'style="width:90px;height:90px;border-radius:50%;object-fit:cover;"'
-                    : 'class="avatar-img"'
+                ${
+                    isLarge
+                        ? 'style="width:90px;height:90px;border-radius:50%;object-fit:cover;"'
+                        : 'class="avatar-img"'
                 }
                 src="${avatarData}"
                 alt="Avatar"
@@ -1007,14 +1051,16 @@ function createAvatarHTML(
 
     return `
         <div
-            ${isLarge
-                ? 'style="width:90px;height:90px;border-radius:50%;background:#5865f2;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:36px;margin:auto;"'
-                : 'class="avatar-placeholder"'
+            ${
+                isLarge
+                    ? 'style="width:90px;height:90px;border-radius:50%;background:#5865f2;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:36px;margin:auto;"'
+                    : 'class="avatar-placeholder"'
             }
         >
             ${initial}
         </div>
     `;
+
 }
 
 
@@ -1056,6 +1102,7 @@ async function loadMyProfile() {
                 '',
                 currentUser
             );
+
     }
 
 }
@@ -1144,6 +1191,7 @@ function logout() {
 
     window.location.href =
         '/login.html';
+
 }
 
 
@@ -1335,9 +1383,10 @@ async function loadFriends() {
 
                     <div
                         class="unread-badge"
-                        style="${unread
-                            ? 'display:inline-block'
-                            : 'display:none'
+                        style="${
+                            unread
+                                ? 'display:inline-block'
+                                : 'display:none'
                         }"
                     >
                         ${unread}
@@ -1616,6 +1665,11 @@ function closeActiveChat() {
 
 
     document.getElementById(
+        'quality-container'
+    ).style.display = 'none';
+
+
+    document.getElementById(
         'call-banner'
     ).style.display = 'none';
 
@@ -1702,6 +1756,12 @@ function openChat(
 
 
     document.getElementById(
+        'quality-container'
+    ).style.display =
+        'none';
+
+
+    document.getElementById(
         'call-banner'
     ).style.display =
         'none';
@@ -1774,8 +1834,12 @@ function sendMessage(e) {
         );
 
 
+    const message =
+        input.value.trim();
+
+
     if (
-        !input.value ||
+        !message ||
         !currentChatFriend ||
         !currentRoom
     ) {
@@ -1796,7 +1860,7 @@ function sendMessage(e) {
                 currentChatFriend,
 
             message:
-                input.value,
+                message,
 
             room:
                 currentRoom
@@ -1811,7 +1875,7 @@ function sendMessage(e) {
 
 
 /* =====================================================
-   WEBRTC
+   PEER CONNECTION
 ===================================================== */
 
 async function setupPeerConnection() {
@@ -1938,11 +2002,13 @@ async function setupPeerConnection() {
                 socket.emit(
                     'ice-candidate',
                     {
+
                         candidate:
                             event.candidate,
 
                         room:
                             currentRoom
+
                     }
                 );
 
@@ -2108,7 +2174,7 @@ async function startCall() {
 
 
 /* =====================================================
-   MODAL - CHAMANDO
+   MODAL CHAMANDO
 ===================================================== */
 
 function showOutgoingCall() {
@@ -2138,7 +2204,7 @@ function hideOutgoingCall() {
 
 
 /* =====================================================
-   MODAL - RECEBENDO
+   MODAL RECEBENDO
 ===================================================== */
 
 function showIncomingCall(data) {
@@ -2211,11 +2277,6 @@ async function acceptIncomingCall() {
 
     try {
 
-        /*
-         * IMPORTANTE:
-         * primeiro pegamos o microfone.
-         */
-
         localStream =
             await navigator.mediaDevices
                 .getUserMedia({
@@ -2249,10 +2310,6 @@ async function acceptIncomingCall() {
             );
 
 
-        /*
-         * Envia a resposta.
-         */
-
         socket.emit(
             'call-answer',
             {
@@ -2269,11 +2326,6 @@ async function acceptIncomingCall() {
             }
         );
 
-
-        /*
-         * AVISA QUEM LIGOU
-         * QUE FOI ACEITO.
-         */
 
         socket.emit(
             'call-accepted',
@@ -2302,9 +2354,7 @@ async function acceptIncomingCall() {
         );
 
 
-        cleanupCall(
-            false
-        );
+        cleanupCall(false);
 
 
         socket.emit(
@@ -2353,10 +2403,6 @@ function rejectIncomingCall() {
         null;
 
 
-    /*
-     * AVISA QUEM LIGOU
-     */
-
     socket.emit(
         'call-rejected',
         {
@@ -2379,7 +2425,7 @@ function rejectIncomingCall() {
 
 
 /* =====================================================
-   CANCELAR CHAMADA
+   CANCELAR
 ===================================================== */
 
 function cancelOutgoingCall() {
@@ -2398,9 +2444,7 @@ function cancelOutgoingCall() {
     hideOutgoingCall();
 
 
-    cleanupCall(
-        false
-    );
+    cleanupCall(false);
 
 
     socket.emit(
@@ -2468,6 +2512,14 @@ function setInCallUI(active) {
 
 
     document.getElementById(
+        'quality-container'
+    ).style.display =
+        active
+            ? 'flex'
+            : 'none';
+
+
+    document.getElementById(
         'call-banner'
     ).style.display =
         active
@@ -2483,6 +2535,33 @@ function setInCallUI(active) {
             'none';
 
     }
+
+}
+
+
+/* =====================================================
+   QUALIDADE DA TRANSMISSÃO
+===================================================== */
+
+function getSelectedResolution() {
+
+    const select =
+        document.getElementById(
+            'quality-select'
+        );
+
+    const [
+        width,
+        height
+    ] =
+        select.value
+            .split('x')
+            .map(Number);
+
+    return {
+        width,
+        height
+    };
 
 }
 
@@ -2517,18 +2596,36 @@ async function toggleScreenShare() {
 
         if (!isSharingScreen) {
 
+            const resolution =
+                getSelectedResolution();
+
+
             screenStream =
                 await navigator.mediaDevices
                     .getDisplayMedia({
 
                         video: {
-                            frameRate: 30
-                        },
+                            width: {
+                                ideal:
+                                    resolution.width,
 
-                        /*
-                         * IMPORTANTE:
-                         * pede também o áudio da tela.
-                         */
+                                max:
+                                    resolution.width
+                            },
+
+                            height: {
+                                ideal:
+                                    resolution.height,
+
+                                max:
+                                    resolution.height
+                            },
+
+                            frameRate: {
+                                ideal: 30,
+                                max: 60
+                            }
+                        },
 
                         audio: true
 
@@ -2538,6 +2635,35 @@ async function toggleScreenShare() {
             const videoTrack =
                 screenStream
                     .getVideoTracks()[0];
+
+
+            /*
+             * Tenta aplicar exatamente
+             * a qualidade escolhida.
+             */
+
+            try {
+
+                await videoTrack.applyConstraints({
+
+                    width:
+                        resolution.width,
+
+                    height:
+                        resolution.height,
+
+                    frameRate: 30
+
+                });
+
+            } catch (error) {
+
+                console.warn(
+                    'Não foi possível aplicar a resolução exata:',
+                    error
+                );
+
+            }
 
 
             videoSender =
@@ -2568,10 +2694,6 @@ async function toggleScreenShare() {
             }
 
 
-            /*
-             * ÁUDIO DA TRANSMISSÃO
-             */
-
             const screenAudioTrack =
                 screenStream
                     .getAudioTracks()[0];
@@ -2598,10 +2720,6 @@ async function toggleScreenShare() {
             button.style.background =
                 '#ed4245';
 
-
-            /*
-             * Renegociação.
-             */
 
             await renegotiate();
 
@@ -2631,6 +2749,20 @@ async function toggleScreenShare() {
         );
 
 
+        if (screenStream) {
+
+            screenStream
+                .getTracks()
+                .forEach(
+                    track => track.stop()
+                );
+
+            screenStream =
+                null;
+
+        }
+
+
         isSharingScreen =
             false;
 
@@ -2651,8 +2783,7 @@ async function stopScreenShare() {
 
 
     const senders =
-        peerConnection
-            .getSenders();
+        peerConnection.getSenders();
 
 
     for (
@@ -2747,9 +2878,7 @@ function cleanupCall(
         screenStream
             .getTracks()
             .forEach(
-                track => {
-                    track.stop();
-                }
+                track => track.stop()
             );
 
         screenStream =
@@ -2763,9 +2892,7 @@ function cleanupCall(
         localStream
             .getTracks()
             .forEach(
-                track => {
-                    track.stop();
-                }
+                track => track.stop()
             );
 
         localStream =
@@ -2842,10 +2969,6 @@ function endCall() {
         currentRoom;
 
 
-    /*
-     * Se ainda estava chamando.
-     */
-
     if (isCalling) {
 
         isCalling =
@@ -2855,9 +2978,7 @@ function endCall() {
         hideOutgoingCall();
 
 
-        cleanupCall(
-            false
-        );
+        cleanupCall(false);
 
 
         socket.emit(
@@ -2874,10 +2995,7 @@ function endCall() {
         );
 
 
-        setInCallUI(
-            false
-        );
-
+        setInCallUI(false);
 
         return;
 
@@ -2886,18 +3004,14 @@ function endCall() {
 
     if (!isInCall) {
 
-        cleanupCall(
-            false
-        );
+        cleanupCall(false);
 
         return;
 
     }
 
 
-    cleanupCall(
-        false
-    );
+    cleanupCall(false);
 
 
     socket.emit(
@@ -2909,15 +3023,13 @@ function endCall() {
     );
 
 
-    setInCallUI(
-        false
-    );
+    setInCallUI(false);
 
 }
 
 
 /* =====================================================
-   CALL OFFER RECEBIDA
+   CALL OFFER
 ===================================================== */
 
 socket.on(
@@ -2984,11 +3096,6 @@ socket.on(
             await flushPendingIce();
 
 
-            /*
-             * Agora a chamada está
-             * oficialmente conectada.
-             */
-
             isCalling =
                 false;
 
@@ -3025,11 +3132,6 @@ socket.on(
             isCalling
         ) {
 
-            /*
-             * Não fechamos o peer aqui.
-             * O call-answer fará isso.
-             */
-
             showToast(
                 'Chamada aceita!'
             );
@@ -3064,14 +3166,10 @@ socket.on(
         hideOutgoingCall();
 
 
-        cleanupCall(
-            false
-        );
+        cleanupCall(false);
 
 
-        setInCallUI(
-            false
-        );
+        setInCallUI(false);
 
 
         showToast(
@@ -3099,11 +3197,6 @@ socket.on(
         }
 
 
-        /*
-         * Se ainda estava aparecendo
-         * a janela de chamada.
-         */
-
         if (isIncomingPending) {
 
             hideIncomingCall();
@@ -3121,19 +3214,11 @@ socket.on(
         }
 
 
-        /*
-         * Se estava em chamada.
-         */
-
         if (isInCall) {
 
-            cleanupCall(
-                false
-            );
+            cleanupCall(false);
 
-            setInCallUI(
-                false
-            );
+            setInCallUI(false);
 
             showToast(
                 'A chamada foi encerrada.'
@@ -3280,8 +3365,7 @@ socket.on(
         try {
 
             if (
-                peerConnection
-                    .remoteDescription
+                peerConnection.remoteDescription
             ) {
 
                 await peerConnection
@@ -3365,29 +3449,21 @@ async function flushPendingIce() {
 
 
 /* =====================================================
-   OUTRO USUÁRIO DESLIGOU
+   HANG UP
 ===================================================== */
 
 socket.on(
     'hang-up',
     () => {
 
-        cleanupCall(
-            false
-        );
-
+        cleanupCall(false);
 
         isCalling =
             false;
 
-
         hideOutgoingCall();
 
-
-        setInCallUI(
-            false
-        );
-
+        setInCallUI(false);
 
         showToast(
             'A chamada foi encerrada.'
@@ -3584,13 +3660,17 @@ function appendMessage(data) {
 
             </div>
 
-            <span class="msg-text">
-                ${data.message}
-            </span>
+            <span class="msg-text"></span>
 
         </div>
 
     `;
+
+
+    li.querySelector(
+        '.msg-text'
+    ).textContent =
+        data.message;
 
 
     messages.appendChild(
