@@ -442,18 +442,21 @@ body {
 
 #screen-share-container {
     display: none;
-    background: #111214;
+    position: relative;
+    background: #000;
     padding: 10px;
     text-align: center;
     border-bottom: 1px solid #1f2023;
-    position: relative;
+    min-height: 220px;
 }
 
 #remote-screen {
+    display: block;
     width: 100%;
-    max-height: 500px;
+    height: auto;
+    max-height: 65vh;
     min-height: 200px;
-    background: black;
+    background: #000;
     border-radius: 6px;
     object-fit: contain;
 }
@@ -727,12 +730,13 @@ body {
             id="remote-screen"
             autoplay
             playsinline
+            controls="false"
         ></video>
 
         <div class="screen-quality-panel">
 
             <label for="screen-quality">
-                Qualidade:
+                Qualidade da transmissão:
             </label>
 
             <select id="screen-quality">
@@ -756,6 +760,7 @@ body {
         <button
             class="fullscreen-btn"
             onclick="toggleFullscreen()"
+            title="Tela cheia"
         >
             ⛶
         </button>
@@ -961,29 +966,35 @@ let isSharingScreen = false;
 let pendingIncomingOffer = null;
 
 let videoSender = null;
+let screenAudioSender = null;
 
 let pendingIceCandidates = [];
 
+let isMakingOffer = false;
+
 
 /* =====================================================
-   QUALIDADE DA TRANSMISSÃO
+   QUALIDADES
 ===================================================== */
 
 const SCREEN_QUALITIES = {
 
     "720": {
         width: 1280,
-        height: 720
+        height: 720,
+        bitrate: 2500000
     },
 
     "1080": {
         width: 1920,
-        height: 1080
+        height: 1080,
+        bitrate: 6000000
     },
 
     "1440": {
         width: 2560,
-        height: 1440
+        height: 1440,
+        bitrate: 12000000
     }
 
 };
@@ -1075,9 +1086,10 @@ function createAvatarHTML(
 
         return `
             <img
-                ${isLarge
-                    ? 'style="width:90px;height:90px;border-radius:50%;object-fit:cover;"'
-                    : 'class="avatar-img"'
+                ${
+                    isLarge
+                        ? 'style="width:90px;height:90px;border-radius:50%;object-fit:cover;"'
+                        : 'class="avatar-img"'
                 }
                 src="${avatarData}"
                 alt="Avatar"
@@ -1093,9 +1105,10 @@ function createAvatarHTML(
 
     return `
         <div
-            ${isLarge
-                ? 'style="width:90px;height:90px;border-radius:50%;background:#5865f2;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:36px;margin:auto;"'
-                : 'class="avatar-placeholder"'
+            ${
+                isLarge
+                    ? 'style="width:90px;height:90px;border-radius:50%;background:#5865f2;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:36px;margin:auto;"'
+                    : 'class="avatar-placeholder"'
             }
         >
             ${initial}
@@ -1115,7 +1128,7 @@ async function loadMyProfile() {
 
         const res =
             await fetch(
-                `/user/${currentUser}`
+                `/user/${encodeURIComponent(currentUser)}`
             );
 
         const user =
@@ -1191,7 +1204,6 @@ function uploadAvatar(event) {
             if (res.ok) {
 
                 loadMyProfile();
-
                 loadFriends();
 
                 showToast(
@@ -1248,7 +1260,7 @@ async function loadFriends() {
 
         const res =
             await fetch(
-                `/friends/${currentUser}`
+                `/friends/${encodeURIComponent(currentUser)}`
             );
 
         const data =
@@ -1426,9 +1438,10 @@ async function loadFriends() {
 
                     <div
                         class="unread-badge"
-                        style="${unread
-                            ? 'display:inline-block'
-                            : 'display:none'
+                        style="${
+                            unread
+                                ? 'display:inline-block'
+                                : 'display:none'
                         }"
                     >
                         ${unread}
@@ -1458,6 +1471,7 @@ async function loadFriends() {
     } catch (error) {
 
         console.error(
+            'Erro ao carregar amigos:',
             error
         );
 
@@ -1749,7 +1763,10 @@ function openChat(
     if (
         currentChatFriend &&
         currentChatFriend !== friend &&
-        (isInCall || isCalling)
+        (
+            isInCall ||
+            isCalling
+        )
     ) {
 
         endCall();
@@ -1910,14 +1927,16 @@ function sendMessage(e) {
 
 
 /* =====================================================
-   WEBRTC
+   PEER CONNECTION
 ===================================================== */
 
 async function setupPeerConnection() {
 
     if (peerConnection) {
 
-        peerConnection.close();
+        try {
+            peerConnection.close();
+        } catch {}
 
     }
 
@@ -1930,6 +1949,10 @@ async function setupPeerConnection() {
             rtcServers
         );
 
+
+    /*
+     * Microfone.
+     */
 
     if (localStream) {
 
@@ -1949,11 +1972,21 @@ async function setupPeerConnection() {
     }
 
 
+    /*
+     * Recebe áudio/vídeo remoto.
+     */
+
     peerConnection.ontrack =
         async event => {
 
             const stream =
+                event.streams &&
                 event.streams[0];
+
+
+            if (!stream) {
+                return;
+            }
 
 
             if (
@@ -1981,19 +2014,31 @@ async function setupPeerConnection() {
 
                     await video.play();
 
-                } catch {}
+                } catch (error) {
+
+                    console.warn(
+                        'Autoplay do vídeo bloqueado:',
+                        error
+                    );
+
+                }
 
 
                 event.track.onended =
                     () => {
 
-                        video.srcObject =
-                            null;
+                        if (
+                            video.srcObject ===
+                            stream
+                        ) {
 
-                        document.getElementById(
-                            'screen-share-container'
-                        ).style.display =
-                            'none';
+                            video.srcObject =
+                                null;
+
+                        }
+
+
+                        hideRemoteScreen();
 
                     };
 
@@ -2011,8 +2056,20 @@ async function setupPeerConnection() {
                     );
 
 
-                audio.srcObject =
-                    stream;
+                /*
+                 * Mantém o áudio da chamada
+                 * separado do vídeo.
+                 */
+
+                if (
+                    audio.srcObject !==
+                    stream
+                ) {
+
+                    audio.srcObject =
+                        stream;
+
+                }
 
 
                 try {
@@ -2025,6 +2082,10 @@ async function setupPeerConnection() {
 
         };
 
+
+    /*
+     * ICE.
+     */
 
     peerConnection.onicecandidate =
         event => {
@@ -2042,7 +2103,10 @@ async function setupPeerConnection() {
                             event.candidate,
 
                         room:
-                            currentRoom
+                            currentRoom,
+
+                        sender:
+                            currentUser
 
                     }
                 );
@@ -2055,26 +2119,73 @@ async function setupPeerConnection() {
     peerConnection.onconnectionstatechange =
         () => {
 
-            if (!peerConnection) return;
+            if (!peerConnection) {
+                return;
+            }
+
+
+            const state =
+                peerConnection.connectionState;
+
 
             console.log(
                 'WebRTC:',
-                peerConnection.connectionState
+                state
+            );
+
+
+            if (
+                state === 'failed'
+            ) {
+
+                showToast(
+                    'A conexão WebRTC falhou.'
+                );
+
+            }
+
+
+            if (
+                state === 'disconnected'
+            ) {
+
+                console.warn(
+                    'WebRTC desconectado.'
+                );
+
+            }
+
+        };
+
+
+    peerConnection.oniceconnectionstatechange =
+        () => {
+
+            if (!peerConnection) {
+                return;
+            }
+
+            console.log(
+                'ICE:',
+                peerConnection.iceConnectionState
             );
 
         };
 
 
     videoSender = null;
+    screenAudioSender = null;
 
 }
 
 
 /* =====================================================
-   RENEGOCIAÇÃO
+   NEGOCIAÇÃO
 ===================================================== */
 
-async function renegotiate() {
+async function createAndSendOffer(
+    eventName = 'renegotiation-offer'
+) {
 
     if (
         !peerConnection ||
@@ -2087,7 +2198,16 @@ async function renegotiate() {
     }
 
 
+    if (isMakingOffer) {
+        return;
+    }
+
+
     try {
+
+        isMakingOffer =
+            true;
+
 
         const offer =
             await peerConnection.createOffer();
@@ -2099,7 +2219,7 @@ async function renegotiate() {
 
 
         socket.emit(
-            'renegotiation-offer',
+            eventName,
             {
 
                 offer:
@@ -2117,11 +2237,25 @@ async function renegotiate() {
     } catch (error) {
 
         console.error(
-            'Erro na renegociação:',
+            'Erro criando oferta:',
             error
         );
 
+    } finally {
+
+        isMakingOffer =
+            false;
+
     }
+
+}
+
+
+async function renegotiate() {
+
+    await createAndSendOffer(
+        'renegotiation-offer'
+    );
 
 }
 
@@ -2138,6 +2272,20 @@ async function startCall() {
         isInCall ||
         isCalling
     ) {
+
+        return;
+
+    }
+
+
+    if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
+    ) {
+
+        alert(
+            'Seu navegador/app não disponibiliza acesso ao microfone.'
+        );
 
         return;
 
@@ -2196,14 +2344,18 @@ async function startCall() {
     } catch (error) {
 
         console.error(
+            'Erro ao iniciar chamada:',
             error
         );
 
 
         cleanupCall(false);
 
+
         alert(
-            'Não foi possível acessar o seu microfone.'
+            'Não foi possível acessar o seu microfone.\n\n' +
+            'Erro: ' +
+            error.message
         );
 
     }
@@ -2212,7 +2364,7 @@ async function startCall() {
 
 
 /* =====================================================
-   MODAL - CHAMANDO
+   MODAL CHAMANDO
 ===================================================== */
 
 function showOutgoingCall() {
@@ -2242,7 +2394,7 @@ function hideOutgoingCall() {
 
 
 /* =====================================================
-   MODAL - RECEBENDO
+   MODAL RECEBENDO
 ===================================================== */
 
 function showIncomingCall(data) {
@@ -2304,13 +2456,99 @@ async function acceptIncomingCall() {
         pendingIncomingOffer;
 
 
-    if (!data) return;
+    if (!data) {
+        return;
+    }
 
 
     hideIncomingCall();
 
     isIncomingPending =
         false;
+
+
+    /*
+     * Se a pessoa estiver em outro chat,
+     * muda automaticamente para quem ligou.
+     */
+
+    const incomingFriend =
+        data.sender;
+
+
+    if (
+        incomingFriend &&
+        incomingFriend !== currentChatFriend
+    ) {
+
+        try {
+
+            const res =
+                await fetch(
+                    `/user/${encodeURIComponent(incomingFriend)}`
+                );
+
+            const user =
+                res.ok
+                    ? await res.json()
+                    : {
+                        avatar: ''
+                    };
+
+
+            openChat(
+                incomingFriend,
+                user.avatar || ''
+            );
+
+        } catch {
+
+            openChat(
+                incomingFriend,
+                ''
+            );
+
+        }
+
+    }
+
+
+    /*
+     * Garante que o room usado é o da chamada.
+     */
+
+    currentRoom =
+        data.room;
+
+
+    if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
+    ) {
+
+        showToast(
+            'Seu navegador/app não permite acesso ao microfone.'
+        );
+
+        socket.emit(
+            'call-rejected',
+            {
+
+                room:
+                    data.room,
+
+                sender:
+                    currentUser
+
+            }
+        );
+
+        pendingIncomingOffer =
+            null;
+
+        return;
+
+    }
 
 
     try {
@@ -2395,9 +2633,7 @@ async function acceptIncomingCall() {
         );
 
 
-        cleanupCall(
-            false
-        );
+        cleanupCall(false);
 
 
         socket.emit(
@@ -2432,7 +2668,9 @@ function rejectIncomingCall() {
         pendingIncomingOffer;
 
 
-    if (!data) return;
+    if (!data) {
+        return;
+    }
 
 
     hideIncomingCall();
@@ -2473,7 +2711,9 @@ function rejectIncomingCall() {
 
 function cancelOutgoingCall() {
 
-    if (!isCalling) return;
+    if (!isCalling) {
+        return;
+    }
 
 
     const room =
@@ -2487,9 +2727,7 @@ function cancelOutgoingCall() {
     hideOutgoingCall();
 
 
-    cleanupCall(
-        false
-    );
+    cleanupCall(false);
 
 
     socket.emit(
@@ -2519,7 +2757,7 @@ function cancelOutgoingCall() {
 
 
 /* =====================================================
-   UI CALL
+   UI DA CALL
 ===================================================== */
 
 function setInCallUI(active) {
@@ -2566,12 +2804,24 @@ function setInCallUI(active) {
 
     if (!active) {
 
-        document.getElementById(
-            'screen-share-container'
-        ).style.display =
-            'none';
+        hideRemoteScreen();
 
     }
+
+}
+
+
+/* =====================================================
+   VERIFICAR GET DISPLAY MEDIA
+===================================================== */
+
+function canShareScreen() {
+
+    return !!(
+        navigator.mediaDevices &&
+        typeof navigator.mediaDevices.getDisplayMedia ===
+            'function'
+    );
 
 }
 
@@ -2587,8 +2837,34 @@ async function toggleScreenShare() {
         !isInCall
     ) {
 
-        alert(
+        showToast(
             'Você precisa estar em uma chamada.'
+        );
+
+        return;
+
+    }
+
+
+    if (isSharingScreen) {
+
+        await stopScreenShare();
+
+        return;
+
+    }
+
+
+    /*
+     * Essa verificação é importante principalmente
+     * para o aplicativo.
+     */
+
+    if (!canShareScreen()) {
+
+        alert(
+            'Este aplicativo/navegador não disponibiliza o compartilhamento de tela.\n\n' +
+            'Se estiver usando um app baseado em WebView, ele precisa permitir a API getDisplayMedia.'
         );
 
         return;
@@ -2604,280 +2880,282 @@ async function toggleScreenShare() {
 
     try {
 
-        if (!isSharingScreen) {
-
-            const quality =
-                getSelectedScreenQuality();
+        const quality =
+            getSelectedScreenQuality();
 
 
-            /*
-             * Solicita a tela ao navegador/Electron.
-             *
-             * O ideal é pedir uma resolução maior
-             * para depois aplicar a qualidade escolhida.
-             */
+        /*
+         * IMPORTANTE:
+         *
+         * A qualidade é escolhida por QUEM TRANSMITE.
+         *
+         * 720p  = 1280x720
+         * 1080p = 1920x1080
+         * 2K    = 2560x1440
+         *
+         * O navegador pode entregar uma resolução menor
+         * caso a tela/captura não suporte a resolução pedida.
+         */
 
-            screenStream =
-                await navigator.mediaDevices
-                    .getDisplayMedia({
+        screenStream =
+            await navigator.mediaDevices
+                .getDisplayMedia({
 
-                        video: {
+                    video: {
 
-                            width: {
-                                ideal:
-                                    quality.width,
+                        width: {
+                            ideal:
+                                quality.width,
 
-                                max:
-                                    quality.width
-                            },
-
-                            height: {
-
-                                ideal:
-                                    quality.height,
-
-                                max:
-                                    quality.height
-                            },
-
-                            frameRate: {
-
-                                ideal: 30,
-
-                                max: 60
-
-                            }
-
+                            max:
+                                quality.width
                         },
 
-                        audio: true
+                        height: {
 
-                    });
+                            ideal:
+                                quality.height,
 
+                            max:
+                                quality.height
+                        },
 
-            const videoTrack =
-                screenStream
-                    .getVideoTracks()[0];
+                        frameRate: {
+                            ideal: 30,
+                            max: 60
+                        }
 
-
-            if (!videoTrack) {
-
-                throw new Error(
-                    'Nenhuma tela foi selecionada.'
-                );
-
-            }
-
-
-            /*
-             * Aplica a resolução escolhida
-             * diretamente na faixa.
-             */
-
-            try {
-
-                await videoTrack.applyConstraints({
-
-                    width: {
-                        ideal:
-                            quality.width,
-
-                        max:
-                            quality.width
                     },
 
-                    height: {
-                        ideal:
-                            quality.height,
+                    /*
+                     * Áudio da tela é opcional.
+                     * Alguns navegadores não permitem áudio
+                     * em determinadas fontes.
+                     */
 
-                        max:
-                            quality.height
-                    },
-
-                    frameRate: {
-                        ideal: 30,
-
-                        max: 60
-                    }
+                    audio: true
 
                 });
 
-            } catch (constraintError) {
 
-                console.warn(
-                    'Não foi possível aplicar todas as restrições:',
-                    constraintError
+        const videoTrack =
+            screenStream
+                .getVideoTracks()[0];
+
+
+        if (!videoTrack) {
+
+            throw new Error(
+                'Nenhuma tela foi selecionada.'
+            );
+
+        }
+
+
+        /*
+         * Aplique a qualidade solicitada.
+         */
+
+        try {
+
+            await videoTrack.applyConstraints({
+
+                width: {
+                    ideal:
+                        quality.width,
+
+                    max:
+                        quality.width
+                },
+
+                height: {
+                    ideal:
+                        quality.height,
+
+                    max:
+                        quality.height
+                },
+
+                frameRate: {
+                    ideal: 30,
+                    max: 60
+                }
+
+            });
+
+        } catch (error) {
+
+            console.warn(
+                'Não foi possível aplicar todas as constraints:',
+                error
+            );
+
+        }
+
+
+        /*
+         * Procura o sender de vídeo.
+         */
+
+        videoSender =
+            peerConnection
+                .getSenders()
+                .find(
+                    sender =>
+                        sender.track &&
+                        sender.track.kind ===
+                            'video'
                 );
 
-            }
 
+        /*
+         * Cria o sender caso ainda não exista.
+         */
 
-            /*
-             * Procura o sender de vídeo.
-             */
+        if (!videoSender) {
 
             videoSender =
+                peerConnection.addTrack(
+                    videoTrack,
+                    screenStream
+                );
+
+        } else {
+
+            await videoSender.replaceTrack(
+                videoTrack
+            );
+
+        }
+
+
+        /*
+         * Áudio da tela.
+         */
+
+        const screenAudioTrack =
+            screenStream
+                .getAudioTracks()[0];
+
+
+        if (screenAudioTrack) {
+
+            screenAudioSender =
                 peerConnection
                     .getSenders()
                     .find(
                         sender =>
                             sender.track &&
                             sender.track.kind ===
-                                'video'
+                                'audio' &&
+                            sender.track !==
+                                localStream
+                                    ?.getAudioTracks()[0]
                     );
 
 
-            /*
-             * Se não existir, cria.
-             */
+            if (!screenAudioSender) {
 
-            if (!videoSender) {
-
-                videoSender =
+                screenAudioSender =
                     peerConnection.addTrack(
-                        videoTrack,
+                        screenAudioTrack,
                         screenStream
                     );
 
             } else {
 
-                await videoSender.replaceTrack(
-                    videoTrack
-                );
+                await screenAudioSender
+                    .replaceTrack(
+                        screenAudioTrack
+                    );
 
             }
-
-
-            /*
-             * Tenta limitar o bitrate
-             * de acordo com a qualidade.
-             */
-
-            try {
-
-                const parameters =
-                    videoSender.getParameters();
-
-                if (!parameters.encodings) {
-
-                    parameters.encodings = [
-                        {}
-                    ];
-
-                }
-
-                const selected =
-                    document.getElementById(
-                        'screen-quality'
-                    ).value;
-
-
-                if (selected === '720') {
-
-                    parameters.encodings[0].maxBitrate =
-                        2_500_000;
-
-                }
-
-                if (selected === '1080') {
-
-                    parameters.encodings[0].maxBitrate =
-                        6_000_000;
-
-                }
-
-                if (selected === '1440') {
-
-                    parameters.encodings[0].maxBitrate =
-                        12_000_000;
-
-                }
-
-
-                parameters.encodings[0].maxFramerate =
-                    30;
-
-
-                await videoSender.setParameters(
-                    parameters
-                );
-
-            } catch (bitrateError) {
-
-                console.warn(
-                    'Não foi possível aplicar bitrate:',
-                    bitrateError
-                );
-
-            }
-
-
-            /*
-             * Áudio da tela.
-             */
-
-            const screenAudioTrack =
-                screenStream
-                    .getAudioTracks()[0];
-
-
-            if (screenAudioTrack) {
-
-                peerConnection.addTrack(
-                    screenAudioTrack,
-                    screenStream
-                );
-
-            }
-
-
-            isSharingScreen =
-                true;
-
-
-            button.innerText =
-                `🛑 Parar Tela (${quality.height}p)`;
-
-
-            button.style.background =
-                '#ed4245';
-
-
-            showToast(
-                `Transmitindo em ${quality.height}p`
-            );
-
-
-            /*
-             * Renegociação.
-             */
-
-            await renegotiate();
-
-
-            /*
-             * Se o usuário clicar no botão
-             * "Parar compartilhamento" do
-             * próprio navegador, também para.
-             */
-
-            videoTrack.onended =
-                () => {
-
-                    if (isSharingScreen) {
-
-                        stopScreenShare();
-
-                    }
-
-                };
-
-
-        } else {
-
-            await stopScreenShare();
 
         }
+
+
+        /*
+         * Bitrate.
+         */
+
+        try {
+
+            const parameters =
+                videoSender.getParameters();
+
+
+            if (!parameters.encodings) {
+
+                parameters.encodings = [
+                    {}
+                ];
+
+            }
+
+
+            parameters.encodings[0].maxBitrate =
+                quality.bitrate;
+
+
+            parameters.encodings[0].maxFramerate =
+                30;
+
+
+            await videoSender.setParameters(
+                parameters
+            );
+
+        } catch (error) {
+
+            console.warn(
+                'Não foi possível configurar bitrate:',
+                error
+            );
+
+        }
+
+
+        isSharingScreen =
+            true;
+
+
+        button.innerText =
+            `🛑 Parar transmissão (${quality.height}p)`;
+
+
+        button.style.background =
+            '#ed4245';
+
+
+        showToast(
+            `Transmitindo em ${quality.height}p`
+        );
+
+
+        /*
+         * Renegocia com o outro usuário.
+         */
+
+        await renegotiate();
+
+
+        /*
+         * Se o navegador mandar o evento "ended",
+         * significa que o usuário clicou em
+         * "Parar compartilhamento".
+         */
+
+        videoTrack.onended =
+            async () => {
+
+                if (isSharingScreen) {
+
+                    await stopScreenShare();
+
+                }
+
+            };
+
 
     } catch (error) {
 
@@ -2886,6 +3164,11 @@ async function toggleScreenShare() {
             error
         );
 
+
+        /*
+         * Cancelar no seletor de tela
+         * não é erro real.
+         */
 
         if (
             error.name ===
@@ -2899,7 +3182,8 @@ async function toggleScreenShare() {
         } else {
 
             alert(
-                'Não foi possível compartilhar a tela: ' +
+                'Não foi possível compartilhar a tela.\n\n' +
+                'Erro: ' +
                 error.message
             );
 
@@ -2911,7 +3195,13 @@ async function toggleScreenShare() {
             screenStream
                 .getTracks()
                 .forEach(
-                    track => track.stop()
+                    track => {
+
+                        try {
+                            track.stop();
+                        } catch {}
+
+                    }
                 );
 
             screenStream =
@@ -2923,50 +3213,99 @@ async function toggleScreenShare() {
         isSharingScreen =
             false;
 
+
+        videoSender =
+            null;
+
+        screenAudioSender =
+            null;
+
+
+        button.innerText =
+            '🖥️ Compartilhar Tela';
+
+
+        button.style.background =
+            '#5865f2';
+
     }
 
 }
 
 
 /* =====================================================
-   PARAR TELA
+   PARAR TRANSMISSÃO
 ===================================================== */
 
 async function stopScreenShare() {
 
     if (!peerConnection) {
+
+        isSharingScreen =
+            false;
+
         return;
+
     }
 
 
+    /*
+     * Guarda o sender antes de remover.
+     */
+
     const senders =
-        peerConnection
-            .getSenders();
+        peerConnection.getSenders();
 
 
-    for (
-        const sender
-        of senders
-    ) {
+    /*
+     * Remove o vídeo da tela.
+     */
 
-        if (
-            sender.track &&
-            sender.track.kind ===
-                'video'
-        ) {
+    if (videoSender) {
 
-            try {
+        try {
 
-                await sender.replaceTrack(
-                    null
-                );
+            await videoSender.replaceTrack(
+                null
+            );
 
-            } catch {}
+        } catch (error) {
+
+            console.warn(
+                error
+            );
 
         }
 
     }
 
+
+    /*
+     * Remove o áudio da tela.
+     */
+
+    if (screenAudioSender) {
+
+        try {
+
+            await screenAudioSender.replaceTrack(
+                null
+            );
+
+        } catch (error) {
+
+            console.warn(
+                error
+            );
+
+        }
+
+    }
+
+
+    /*
+     * Para todas as tracks.
+     */
 
     if (screenStream) {
 
@@ -2975,7 +3314,14 @@ async function stopScreenShare() {
             .forEach(
                 track => {
 
-                    track.stop();
+                    try {
+
+                        track.onended =
+                            null;
+
+                        track.stop();
+
+                    } catch {}
 
                 }
             );
@@ -2985,6 +3331,12 @@ async function stopScreenShare() {
 
     }
 
+
+    videoSender =
+        null;
+
+    screenAudioSender =
+        null;
 
     isSharingScreen =
         false;
@@ -3004,23 +3356,62 @@ async function stopScreenShare() {
         '#5865f2';
 
 
-    document.getElementById(
-        'screen-share-container'
-    ).style.display =
-        'none';
+    /*
+     * Remove a imagem local/remota da interface.
+     */
+
+    hideRemoteScreen();
 
 
-    document.getElementById(
-        'remote-screen'
-    ).srcObject =
-        null;
-
+    /*
+     * Renegociação avisa ao outro lado que
+     * não existe mais vídeo.
+     */
 
     if (isInCall) {
 
         await renegotiate();
 
     }
+
+}
+
+
+/* =====================================================
+   ESCONDER TELA REMOTA
+===================================================== */
+
+function hideRemoteScreen() {
+
+    const container =
+        document.getElementById(
+            'screen-share-container'
+        );
+
+    const video =
+        document.getElementById(
+            'remote-screen'
+        );
+
+
+    /*
+     * Remove o srcObject.
+     * Isso evita deixar a última imagem congelada.
+     */
+
+    try {
+
+        video.pause();
+
+    } catch {}
+
+
+    video.srcObject =
+        null;
+
+
+    container.style.display =
+        'none';
 
 }
 
@@ -3039,7 +3430,16 @@ function cleanupCall(
             .getTracks()
             .forEach(
                 track => {
-                    track.stop();
+
+                    try {
+
+                        track.onended =
+                            null;
+
+                        track.stop();
+
+                    } catch {}
+
                 }
             );
 
@@ -3055,7 +3455,11 @@ function cleanupCall(
             .getTracks()
             .forEach(
                 track => {
-                    track.stop();
+
+                    try {
+                        track.stop();
+                    } catch {}
+
                 }
             );
 
@@ -3067,7 +3471,11 @@ function cleanupCall(
 
     if (peerConnection) {
 
-        peerConnection.close();
+        try {
+            peerConnection.ontrack = null;
+            peerConnection.onicecandidate = null;
+            peerConnection.close();
+        } catch {}
 
         peerConnection =
             null;
@@ -3078,6 +3486,9 @@ function cleanupCall(
     videoSender =
         null;
 
+    screenAudioSender =
+        null;
+
 
     pendingIceCandidates =
         [];
@@ -3086,23 +3497,23 @@ function cleanupCall(
     isSharingScreen =
         false;
 
+    isMakingOffer =
+        false;
 
-    document.getElementById(
-        'remote-screen'
-    ).srcObject =
-        null;
+
+    /*
+     * IMPORTANTE:
+     * limpa completamente o vídeo remoto.
+     * Assim não fica a última imagem congelada.
+     */
+
+    hideRemoteScreen();
 
 
     document.getElementById(
         'remote-audio'
     ).srcObject =
         null;
-
-
-    document.getElementById(
-        'screen-share-container'
-    ).style.display =
-        'none';
 
 
     const screenButton =
@@ -3141,7 +3552,7 @@ function cleanupCall(
 
 
 /* =====================================================
-   DESLIGAR
+   DESLIGAR CALL
 ===================================================== */
 
 function endCall() {
@@ -3159,9 +3570,7 @@ function endCall() {
         hideOutgoingCall();
 
 
-        cleanupCall(
-            false
-        );
+        cleanupCall(false);
 
 
         socket.emit(
@@ -3190,25 +3599,23 @@ function endCall() {
 
     if (!isInCall) {
 
-        cleanupCall(
-            false
-        );
+        cleanupCall(false);
 
         return;
 
     }
 
 
-    cleanupCall(
-        false
-    );
+    cleanupCall(false);
 
 
     socket.emit(
         'hang-up',
         {
+
             room:
                 room
+
         }
     );
 
@@ -3230,7 +3637,7 @@ socket.on(
 
         if (
             !data ||
-            data.room !== currentRoom
+            !data.room
         ) {
 
             return;
@@ -3267,6 +3674,7 @@ socket.on(
 
         if (
             !peerConnection ||
+            !data ||
             data.room !== currentRoom
         ) {
 
@@ -3299,9 +3707,11 @@ socket.on(
                 true
             );
 
+
         } catch (error) {
 
             console.error(
+                'Erro ao receber answer:',
                 error
             );
 
@@ -3320,6 +3730,7 @@ socket.on(
     data => {
 
         if (
+            data &&
             data.room === currentRoom &&
             isCalling
         ) {
@@ -3343,6 +3754,7 @@ socket.on(
     data => {
 
         if (
+            !data ||
             data.room !== currentRoom
         ) {
 
@@ -3358,9 +3770,7 @@ socket.on(
         hideOutgoingCall();
 
 
-        cleanupCall(
-            false
-        );
+        cleanupCall(false);
 
 
         setInCallUI(
@@ -3385,6 +3795,7 @@ socket.on(
     data => {
 
         if (
+            !data ||
             data.room !== currentRoom
         ) {
 
@@ -3412,9 +3823,7 @@ socket.on(
 
         if (isInCall) {
 
-            cleanupCall(
-                false
-            );
+            cleanupCall(false);
 
             setInCallUI(
                 false
@@ -3431,7 +3840,7 @@ socket.on(
 
 
 /* =====================================================
-   RENEGOCIAÇÃO
+   RENEGOCIAÇÃO - RECEBER OFFER
 ===================================================== */
 
 socket.on(
@@ -3441,6 +3850,7 @@ socket.on(
         if (
             !peerConnection ||
             !isInCall ||
+            !data ||
             data.room !== currentRoom
         ) {
 
@@ -3492,6 +3902,7 @@ socket.on(
         } catch (error) {
 
             console.error(
+                'Erro na renegociação:',
                 error
             );
 
@@ -3511,6 +3922,7 @@ socket.on(
 
         if (
             !peerConnection ||
+            !data ||
             data.room !== currentRoom
         ) {
 
@@ -3531,9 +3943,11 @@ socket.on(
 
             await flushPendingIce();
 
+
         } catch (error) {
 
             console.error(
+                'Erro na resposta da renegociação:',
                 error
             );
 
@@ -3587,6 +4001,7 @@ socket.on(
         } catch (error) {
 
             console.error(
+                'Erro ICE:',
                 error
             );
 
@@ -3639,6 +4054,7 @@ async function flushPendingIce() {
         } catch (error) {
 
             console.error(
+                'Erro adicionando ICE pendente:',
                 error
             );
 
@@ -3657,9 +4073,7 @@ socket.on(
     'hang-up',
     () => {
 
-        cleanupCall(
-            false
-        );
+        cleanupCall(false);
 
 
         isCalling =
@@ -3667,6 +4081,17 @@ socket.on(
 
 
         hideOutgoingCall();
+
+
+        hideIncomingCall();
+
+
+        isIncomingPending =
+            false;
+
+
+        pendingIncomingOffer =
+            null;
 
 
         setInCallUI(
@@ -3686,7 +4111,12 @@ socket.on(
    FULLSCREEN
 ===================================================== */
 
-function toggleFullscreen() {
+async function toggleFullscreen() {
+
+    const container =
+        document.getElementById(
+            'screen-share-container'
+        );
 
     const video =
         document.getElementById(
@@ -3694,27 +4124,56 @@ function toggleFullscreen() {
         );
 
 
-    if (
-        !document.fullscreenElement
-    ) {
+    try {
 
         if (
-            video.requestFullscreen
+            !document.fullscreenElement
         ) {
 
-            video.requestFullscreen();
+            /*
+             * Tenta colocar o container inteiro
+             * em tela cheia.
+             * Assim os controles continuam disponíveis.
+             */
 
-        } else if (
-            video.webkitRequestFullscreen
-        ) {
+            if (
+                container.requestFullscreen
+            ) {
 
-            video.webkitRequestFullscreen();
+                await container.requestFullscreen();
+
+            } else if (
+                video.requestFullscreen
+            ) {
+
+                await video.requestFullscreen();
+
+            } else if (
+                video.webkitRequestFullscreen
+            ) {
+
+                video.webkitRequestFullscreen();
+
+            }
+
+        } else {
+
+            if (
+                document.exitFullscreen
+            ) {
+
+                await document.exitFullscreen();
+
+            }
 
         }
 
-    } else {
+    } catch (error) {
 
-        document.exitFullscreen();
+        console.error(
+            'Erro fullscreen:',
+            error
+        );
 
     }
 
@@ -3869,13 +4328,22 @@ function appendMessage(data) {
 
             </div>
 
-            <span class="msg-text">
-                ${data.message}
-            </span>
+            <span class="msg-text"></span>
 
         </div>
 
     `;
+
+
+    /*
+     * Usa textContent para não permitir
+     * HTML enviado pelo usuário.
+     */
+
+    li.querySelector(
+        '.msg-text'
+    ).textContent =
+        data.message;
 
 
     messages.appendChild(
@@ -3905,8 +4373,10 @@ window.addEventListener(
             socket.emit(
                 'hang-up',
                 {
+
                     room:
                         currentRoom
+
                 }
             );
 
