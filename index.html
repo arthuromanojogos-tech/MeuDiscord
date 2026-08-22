@@ -1126,13 +1126,13 @@ body.fullscreen-active {
             >
 
             <button
-    class="profile-btn"
     type="button"
+    class="profile-btn"
     onclick="openAvatarPicker()"
 >
-                📷 Mudar Foto
-            </button>
-
+            📷 Mudar Foto
+         </button>
+  
             <button
                 class="logout-btn"
                 onclick="logout()"
@@ -1754,11 +1754,148 @@ function openAvatarPicker() {
 async function uploadAvatar(event) {
 
     const input = event.target;
-    const file = input.files && input.files[0];
+
+    const file =
+        input.files &&
+        input.files[0];
 
     if (!file) {
         return;
     }
+    function openAvatarPicker() {
+
+    const input =
+        document.getElementById(
+            'avatar-file-input'
+        );
+
+    if (!input) {
+
+        alert(
+            'Seletor de foto não encontrado.'
+        );
+
+        return;
+    }
+
+    input.value = '';
+
+    input.click();
+
+}
+
+    if (!file.type.startsWith('image/')) {
+
+        alert('Selecione uma imagem válida.');
+
+        input.value = '';
+
+        return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+
+        alert(
+            'A imagem é muito grande.\n\n' +
+            'Escolha uma imagem de até 8 MB.'
+        );
+
+        input.value = '';
+
+        return;
+    }
+
+    try {
+
+        showToast('Processando foto...');
+
+        const reader = new FileReader();
+
+        const base64Image =
+            await new Promise(
+                (resolve, reject) => {
+
+                    reader.onload = () => {
+                        resolve(reader.result);
+                    };
+
+                    reader.onerror = () => {
+                        reject(
+                            new Error(
+                                'Não foi possível ler a imagem.'
+                            )
+                        );
+                    };
+
+                    reader.readAsDataURL(file);
+
+                }
+            );
+
+        const res =
+            await fetch(
+                '/update-avatar',
+                {
+                    method: 'POST',
+
+                    headers: {
+                        'Content-Type':
+                            'application/json'
+                    },
+
+                    credentials: 'include',
+
+                    body: JSON.stringify({
+                        username: currentUser,
+                        avatar: base64Image
+                    })
+                }
+            );
+
+        if (!res.ok) {
+
+            const errorText =
+                await res.text()
+                    .catch(() => '');
+
+            console.error(
+                'Erro ao atualizar avatar:',
+                errorText
+            );
+
+            throw new Error(
+                errorText ||
+                'Erro ao enviar a foto.'
+            );
+        }
+
+        await loadMyProfile();
+
+        await loadFriends();
+
+        showToast(
+            'Foto de perfil alterada!'
+        );
+
+    } catch (error) {
+
+        console.error(
+            'Erro ao alterar foto:',
+            error
+        );
+
+        alert(
+            'Não foi possível alterar a foto.\n\n' +
+            error.message
+        );
+
+    } finally {
+
+        input.value = '';
+
+    }
+
+}
 
     if (!file.type.startsWith('image/')) {
         alert('Selecione uma imagem.');
