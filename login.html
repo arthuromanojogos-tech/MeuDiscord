@@ -1,6 +1,3 @@
-# login.html
-
-```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -293,10 +290,6 @@
                     );
 
 
-                    /*
-                    Faz login automaticamente
-                    */
-
                     const loginRes =
                         await fetch(
                             API_URL + '/login',
@@ -357,7 +350,6 @@
 
                 openChat();
 
-
             }
 
             catch (error) {
@@ -390,15 +382,19 @@
         function openChat() {
 
             /*
-            No Capacitor:
-            permanece dentro do aplicativo.
+             * IMPORTANTE:
+             *
+             * Não usar:
+             *
+             * ./index.html
+             *
+             * porque o servidor Render não está
+             * disponibilizando essa rota dessa forma.
+             *
+             * A página principal fica na rota /.
+             */
 
-            No navegador:
-            abre normalmente o index.html.
-            */
-
-            window.location.href =
-                './index.html';
+            window.location.replace('/');
 
         }
 
@@ -489,4 +485,3 @@
 </body>
 
 </html>
-```
