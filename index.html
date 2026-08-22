@@ -4514,6 +4514,49 @@ socket.on(
 ===================================================== */
 
 async function toggleFullscreen() {
+    const video = document.getElementById('remote-screen');
+    const container = document.getElementById('screen-share-container');
+
+    if (!video || !container) return;
+
+    try {
+        // Se já estiver em fullscreen, sair
+        if (
+            document.fullscreenElement ||
+            document.webkitFullscreenElement
+        ) {
+            if (document.exitFullscreen) {
+                await document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+
+            return;
+        }
+
+        // Tenta colocar o container inteiro em fullscreen
+        if (container.requestFullscreen) {
+            await container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+            await container.webkitRequestFullscreen();
+        } else if (video.webkitEnterFullscreen) {
+            // Safari/iPhone
+            video.webkitEnterFullscreen();
+        }
+
+    } catch (error) {
+        console.error('Erro ao entrar em tela cheia:', error);
+
+        // Fallback para celular
+        if (video.webkitEnterFullscreen) {
+            try {
+                video.webkitEnterFullscreen();
+            } catch (e) {
+                console.error('Fullscreen mobile não disponível:', e);
+            }
+        }
+    }
+}
 
     const container =
         document.getElementById(
