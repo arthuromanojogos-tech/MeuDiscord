@@ -198,6 +198,18 @@
 
     <script>
 
+        // =====================================================
+        // SERVIDOR
+        // =====================================================
+
+        const API_URL =
+            'https://meudiscord.onrender.com';
+
+
+        // =====================================================
+        // ELEMENTOS
+        // =====================================================
+
         const userInput =
             document.getElementById('user');
 
@@ -207,6 +219,10 @@
         const message =
             document.getElementById('message');
 
+
+        // =====================================================
+        // LOGIN / CADASTRO
+        // =====================================================
 
         async function auth(type) {
 
@@ -231,23 +247,26 @@
             try {
 
                 const res =
-                    await fetch('/' + type, {
+                    await fetch(
+                        `${API_URL}/${type}`,
+                        {
 
-                        method: 'POST',
+                            method: 'POST',
 
-                        headers: {
-                            'Content-Type':
-                                'application/json'
-                        },
+                            headers: {
+                                'Content-Type':
+                                    'application/json'
+                            },
 
-                        credentials: 'include',
+                            credentials: 'include',
 
-                        body: JSON.stringify({
-                            username,
-                            password
-                        })
+                            body: JSON.stringify({
+                                username,
+                                password
+                            })
 
-                    });
+                        }
+                    );
 
 
                 const text =
@@ -264,6 +283,10 @@
                     return;
                 }
 
+
+                // =================================================
+                // CADASTRO
+                // =================================================
 
                 if (type === 'register') {
 
@@ -285,19 +308,28 @@
                 }
 
 
-                // Login correto
+                // =================================================
+                // LOGIN
+                // =================================================
+
                 localStorage.setItem(
                     'chat_username',
                     username
                 );
 
-                window.location.replace('/');
+
+                // Vai para o servidor do Render
+                window.location.href =
+                    `${API_URL}/`;
 
             }
 
             catch (error) {
 
-                console.error(error);
+                console.error(
+                    'Erro de login:',
+                    error
+                );
 
                 showMessage(
                     'Erro de conexão com o servidor.',
@@ -309,6 +341,10 @@
         }
 
 
+        // =====================================================
+        // LOGIN AUTOMÁTICO APÓS CADASTRO
+        // =====================================================
+
         async function loginAfterRegister(
             username,
             password
@@ -317,23 +353,30 @@
             try {
 
                 const res =
-                    await fetch('/login', {
+                    await fetch(
+                        `${API_URL}/login`,
+                        {
 
-                        method: 'POST',
+                            method: 'POST',
 
-                        headers: {
-                            'Content-Type':
-                                'application/json'
-                        },
+                            headers: {
+                                'Content-Type':
+                                    'application/json'
+                            },
 
-                        credentials: 'include',
+                            credentials: 'include',
 
-                        body: JSON.stringify({
-                            username,
-                            password
-                        })
+                            body: JSON.stringify({
+                                username,
+                                password
+                            })
 
-                    });
+                        }
+                    );
+
+
+                const text =
+                    await res.text();
 
 
                 if (!res.ok) {
@@ -352,11 +395,18 @@
                     username
                 );
 
-                window.location.replace('/');
+
+                window.location.href =
+                    `${API_URL}/`;
 
             }
 
             catch (error) {
+
+                console.error(
+                    'Erro ao entrar após cadastro:',
+                    error
+                );
 
                 showMessage(
                     'Conta criada. Faça login.',
@@ -368,12 +418,17 @@
         }
 
 
+        // =====================================================
+        // MENSAGEM
+        // =====================================================
+
         function showMessage(
             text,
             error
         ) {
 
-            message.textContent = text;
+            message.textContent =
+                text;
 
             message.style.color =
                 error
@@ -383,7 +438,10 @@
         }
 
 
-        // Enter no celular/PC
+        // =====================================================
+        // ENTER
+        // =====================================================
+
         document.addEventListener(
             'keydown',
             event => {
