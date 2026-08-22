@@ -10,64 +10,95 @@ const cors = require('cors');
 const app = express();
 const server = http.createServer(app);
 
+
 /* ======================================================
    CORS
 ====================================================== */
 
-app.use(cors({
-    origin: true,
-    credentials: true
-}));
+app.use(
+    cors({
+        origin: true,
+        credentials: true
+    })
+);
+
 
 /* ======================================================
    SOCKET.IO
 ====================================================== */
 
-const io = new Server(server, {
-    cors: {
-        origin: true,
-        credentials: true,
-        methods: ['GET', 'POST']
+const io = new Server(
+    server,
+    {
+        cors: {
+            origin: true,
+            credentials: true,
+            methods: [
+                'GET',
+                'POST'
+            ]
+        }
     }
-});
+);
+
 
 /* ======================================================
    BODY
 ====================================================== */
 
-app.use(express.json({
-    limit: '10mb'
-}));
+app.use(
+    express.json({
+        limit: '10mb'
+    })
+);
 
-app.use(express.urlencoded({
-    limit: '10mb',
-    extended: true
-}));
+app.use(
+    express.urlencoded({
+        limit: '10mb',
+        extended: true
+    })
+);
+
 
 /* ======================================================
    BANCO
 ====================================================== */
 
-const db = new sqlite3.Database('./database.db');
+const db =
+    new sqlite3.Database(
+        './database.db'
+    );
+
 
 /* ======================================================
    SESSÕES
 ====================================================== */
 
-const sessions = new Map();
+const sessions =
+    new Map();
 
-function createSession(username) {
+
+function createSession(
+    username
+) {
 
     const token =
-        crypto.randomBytes(32).toString('hex');
+        crypto.randomBytes(
+            32
+        ).toString('hex');
 
-    sessions.set(token, {
-        username,
-        createdAt: Date.now()
-    });
+    sessions.set(
+        token,
+        {
+            username,
+            createdAt:
+                Date.now()
+        }
+    );
 
     return token;
 }
+
 
 function getSession(req) {
 
@@ -87,21 +118,33 @@ function getSession(req) {
         return null;
     }
 
-    return sessions.get(match[1]) || null;
+    return (
+        sessions.get(
+            match[1]
+        ) || null
+    );
 }
 
-function requireLogin(req, res, next) {
+
+function requireLogin(
+    req,
+    res,
+    next
+) {
 
     const session =
         getSession(req);
 
     if (!session) {
 
-        return res.status(401).json({
-            success: false,
-            loggedIn: false,
-            message: 'Não autenticado.'
-        });
+        return res
+            .status(401)
+            .json({
+                success: false,
+                loggedIn: false,
+                message:
+                    'Não autenticado.'
+            });
     }
 
     req.username =
@@ -109,6 +152,7 @@ function requireLogin(req, res, next) {
 
     next();
 }
+
 
 /* ======================================================
    BANCO DE DADOS
@@ -145,292 +189,415 @@ db.serialize(() => {
 
 });
 
+
 /* ======================================================
-   LOGIN.HTML
+   STATUS
 ====================================================== */
 
-app.get('/login.html', (req, res) => {
+app.get(
+    '/api/status',
+    (req, res) => {
 
-    const session =
-        getSession(req);
+        res.json({
+            online: true,
+            server:
+                'Meu Discord',
+            time:
+                new Date()
+                    .toISOString()
+        });
 
-    if (session) {
-        return res.redirect('/');
     }
+);
 
-    res.sendFile(
-        __dirname + '/login.html'
-    );
-});
+
+/* ======================================================
+   LOGIN PAGE
+====================================================== */
+
+app.get(
+    '/login.html',
+    (req, res) => {
+
+        const session =
+            getSession(req);
+
+        if (session) {
+
+            return res.redirect(
+                '/'
+            );
+        }
+
+        res.sendFile(
+            __dirname +
+            '/login.html'
+        );
+
+    }
+);
+
 
 /* ======================================================
    CADASTRO
 ====================================================== */
 
-app.post('/register', async (req, res) => {
+app.post(
+    '/register',
+    async (req, res) => {
 
-    const username =
-        String(
-            req.body.username || ''
-        ).trim();
+        const username =
+            String(
+                req.body.username ||
+                ''
+            ).trim();
 
-    const password =
-        String(
-            req.body.password || ''
-        );
-
-    if (!username || !password) {
-
-        return res.status(400).send(
-            'Preencha todos os campos.'
-        );
-    }
-
-    if (username.length < 3) {
-
-        return res.status(400).send(
-            'O usuário precisa ter pelo menos 3 caracteres.'
-        );
-    }
-
-    if (password.length < 4) {
-
-        return res.status(400).send(
-            'A senha precisa ter pelo menos 4 caracteres.'
-        );
-    }
-
-    try {
-
-        const hashedPassword =
-            await bcrypt.hash(
-                password,
-                10
+        const password =
+            String(
+                req.body.password ||
+                ''
             );
 
-        db.run(
-            `
-            INSERT INTO users
-            (username, password, avatar)
-            VALUES (?, ?, '')
-            `,
-            [
-                username,
-                hashedPassword
-            ],
-            function(err) {
 
-                if (err) {
+        if (
+            !username ||
+            !password
+        ) {
 
-                    if (
-                        err.message &&
-                        err.message.includes('UNIQUE')
-                    ) {
+            return res
+                .status(400)
+                .send(
+                    'Preencha todos os campos.'
+                );
+        }
 
-                        return res.status(400).send(
-                            'Usuário já existe!'
-                        );
-                    }
 
-                    console.error(
-                        'Erro ao cadastrar:',
-                        err
-                    );
+        if (
+            username.length < 3
+        ) {
 
-                    return res.status(500).send(
-                        'Erro ao criar conta.'
-                    );
-                }
+            return res
+                .status(400)
+                .send(
+                    'O usuário precisa ter pelo menos 3 caracteres.'
+                );
+        }
 
-                res.send(
-                    'Conta criada com sucesso!'
+
+        if (
+            password.length < 4
+        ) {
+
+            return res
+                .status(400)
+                .send(
+                    'A senha precisa ter pelo menos 4 caracteres.'
+                );
+        }
+
+
+        try {
+
+            const hashedPassword =
+                await bcrypt.hash(
+                    password,
+                    10
                 );
 
-            }
-        );
 
-    } catch (error) {
+            db.run(
+                `
+                INSERT INTO users
+                (username, password, avatar)
+                VALUES (?, ?, '')
+                `,
+                [
+                    username,
+                    hashedPassword
+                ],
+                function(err) {
 
-        console.error(error);
+                    if (err) {
 
-        res.status(500).send(
-            'Erro no servidor.'
-        );
+                        if (
+                            err.message &&
+                            err.message.includes(
+                                'UNIQUE'
+                            )
+                        ) {
+
+                            return res
+                                .status(400)
+                                .send(
+                                    'Usuário já existe!'
+                                );
+                        }
+
+
+                        console.error(
+                            err
+                        );
+
+                        return res
+                            .status(500)
+                            .send(
+                                'Erro ao criar conta.'
+                            );
+                    }
+
+
+                    res.send(
+                        'Conta criada com sucesso!'
+                    );
+
+                }
+            );
+
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
+            res
+                .status(500)
+                .send(
+                    'Erro no servidor.'
+                );
+        }
+
     }
+);
 
-});
 
 /* ======================================================
    LOGIN
 ====================================================== */
 
-app.post('/login', (req, res) => {
+app.post(
+    '/login',
+    (req, res) => {
 
-    const username =
-        String(
-            req.body.username || ''
-        ).trim();
+        const username =
+            String(
+                req.body.username ||
+                ''
+            ).trim();
 
-    const password =
-        String(
-            req.body.password || ''
-        );
+        const password =
+            String(
+                req.body.password ||
+                ''
+            );
 
-    if (!username || !password) {
 
-        return res.status(400).send(
-            'Preencha usuário e senha.'
-        );
-    }
+        if (
+            !username ||
+            !password
+        ) {
 
-    db.get(
-        `
-        SELECT *
-        FROM users
-        WHERE username = ?
-        `,
-        [username],
-        async (err, user) => {
-
-            if (err) {
-
-                console.error(err);
-
-                return res.status(500).send(
-                    'Erro no servidor.'
+            return res
+                .status(400)
+                .send(
+                    'Preencha usuário e senha.'
                 );
-            }
+        }
 
-            if (!user) {
 
-                return res.status(401).send(
-                    'Usuário ou senha incorretos!'
-                );
-            }
+        db.get(
+            `
+            SELECT *
+            FROM users
+            WHERE username = ?
+            `,
+            [
+                username
+            ],
+            async (
+                err,
+                user
+            ) => {
 
-            try {
+                if (err) {
 
-                const passwordCorrect =
-                    await bcrypt.compare(
-                        password,
-                        user.password
+                    console.error(
+                        err
                     );
 
-                if (!passwordCorrect) {
-
-                    return res.status(401).send(
-                        'Usuário ou senha incorretos!'
-                    );
+                    return res
+                        .status(500)
+                        .send(
+                            'Erro no servidor.'
+                        );
                 }
 
-                const token =
-                    createSession(
-                        user.username
+
+                if (!user) {
+
+                    return res
+                        .status(401)
+                        .send(
+                            'Usuário ou senha incorretos!'
+                        );
+                }
+
+
+                try {
+
+                    const correct =
+                        await bcrypt.compare(
+                            password,
+                            user.password
+                        );
+
+
+                    if (!correct) {
+
+                        return res
+                            .status(401)
+                            .send(
+                                'Usuário ou senha incorretos!'
+                            );
+                    }
+
+
+                    const token =
+                        createSession(
+                            user.username
+                        );
+
+
+                    /*
+                       Cookie compatível com HTTPS
+                       e acesso cross-origin.
+                    */
+
+                    res.setHeader(
+                        'Set-Cookie',
+                        `chat_session=${token}; HttpOnly; Path=/; SameSite=None; Secure`
                     );
 
-                /*
-                   IMPORTANTE PARA APP + SITE
 
-                   SameSite=None permite que
-                   o aplicativo envie o cookie
-                   para o Render.
+                    res.json({
+                        success: true,
+                        username:
+                            user.username
+                    });
 
-                   Secure exige HTTPS.
-                */
+                } catch (error) {
 
-                res.setHeader(
-                    'Set-Cookie',
-                    `chat_session=${token}; HttpOnly; Path=/; SameSite=None; Secure`
-                );
+                    console.error(
+                        error
+                    );
 
-                res.json({
-                    success: true,
-                    username: user.username
-                });
+                    res
+                        .status(500)
+                        .send(
+                            'Erro no servidor.'
+                        );
+                }
 
-            } catch (error) {
-
-                console.error(error);
-
-                res.status(500).send(
-                    'Erro no servidor.'
-                );
             }
+        );
 
-        }
-    );
+    }
+);
 
-});
 
 /* ======================================================
-   USUÁRIO LOGADO
+   ME
 ====================================================== */
 
-app.get('/me', (req, res) => {
+app.get(
+    '/me',
+    (req, res) => {
 
-    const session =
-        getSession(req);
+        const session =
+            getSession(req);
 
-    if (!session) {
 
-        return res.status(401).json({
-            loggedIn: false
+        if (!session) {
+
+            return res
+                .status(401)
+                .json({
+                    loggedIn: false
+                });
+        }
+
+
+        res.json({
+            loggedIn: true,
+            username:
+                session.username
         });
+
     }
+);
 
-    res.json({
-        loggedIn: true,
-        username: session.username
-    });
-
-});
 
 /* ======================================================
    LOGOUT
 ====================================================== */
 
-app.post('/logout', (req, res) => {
+app.post(
+    '/logout',
+    (req, res) => {
 
-    const cookies =
-        req.headers.cookie;
+        const cookies =
+            req.headers.cookie;
 
-    if (cookies) {
 
-        const match =
-            cookies.match(
-                /chat_session=([^;]+)/
-            );
+        if (cookies) {
 
-        if (match) {
+            const match =
+                cookies.match(
+                    /chat_session=([^;]+)/
+                );
 
-            sessions.delete(
-                match[1]
-            );
+
+            if (match) {
+
+                sessions.delete(
+                    match[1]
+                );
+
+            }
+
         }
+
+
+        res.setHeader(
+            'Set-Cookie',
+            'chat_session=; HttpOnly; Path=/; Max-Age=0; SameSite=None; Secure'
+        );
+
+
+        res.json({
+            success: true
+        });
+
     }
+);
 
-    res.setHeader(
-        'Set-Cookie',
-        'chat_session=; HttpOnly; Path=/; Max-Age=0; SameSite=None; Secure'
-    );
-
-    res.json({
-        success: true
-    });
-
-});
 
 /* ======================================================
    PÁGINA PRINCIPAL
 ====================================================== */
 
-app.get('/', requireLogin, (req, res) => {
+app.get(
+    '/',
+    requireLogin,
+    (req, res) => {
 
-    res.sendFile(
-        __dirname + '/index.html'
-    );
+        res.sendFile(
+            __dirname +
+            '/index.html'
+        );
 
-});
+    }
+);
+
 
 /* ======================================================
    ARQUIVOS ESTÁTICOS
@@ -439,23 +606,27 @@ app.get('/', requireLogin, (req, res) => {
 app.use(
     '/css',
     express.static(
-        __dirname + '/css'
+        __dirname +
+        '/css'
     )
 );
 
 app.use(
     '/js',
     express.static(
-        __dirname + '/js'
+        __dirname +
+        '/js'
     )
 );
 
 app.use(
     '/assets',
     express.static(
-        __dirname + '/assets'
+        __dirname +
+        '/assets'
     )
 );
+
 
 /* ======================================================
    AVATAR
@@ -470,7 +641,9 @@ app.post(
             req.username;
 
         const avatar =
-            req.body.avatar || '';
+            req.body.avatar ||
+            '';
+
 
         db.run(
             `
@@ -486,12 +659,17 @@ app.post(
 
                 if (err) {
 
-                    console.error(err);
-
-                    return res.status(500).send(
-                        'Erro ao atualizar avatar.'
+                    console.error(
+                        err
                     );
+
+                    return res
+                        .status(500)
+                        .send(
+                            'Erro ao atualizar avatar.'
+                        );
                 }
+
 
                 res.send(
                     'Avatar atualizado com sucesso!'
@@ -502,6 +680,7 @@ app.post(
 
     }
 );
+
 
 /* ======================================================
    USUÁRIO
@@ -515,16 +694,25 @@ app.get(
         const username =
             req.params.username;
 
+
         db.get(
             `
             SELECT username, avatar
             FROM users
             WHERE username = ?
             `,
-            [username],
-            (err, user) => {
+            [
+                username
+            ],
+            (
+                err,
+                user
+            ) => {
 
-                if (err || !user) {
+                if (
+                    err ||
+                    !user
+                ) {
 
                     return res.json({
                         username,
@@ -532,13 +720,17 @@ app.get(
                     });
                 }
 
-                res.json(user);
+
+                res.json(
+                    user
+                );
 
             }
         );
 
     }
 );
+
 
 /* ======================================================
    AMIGOS
@@ -552,17 +744,20 @@ app.get(
         const username =
             req.params.username;
 
-        /*
-           Não permite consultar a lista
-           de outro usuário.
-        */
 
-        if (username !== req.username) {
+        if (
+            username !==
+            req.username
+        ) {
 
-            return res.status(403).json({
-                error: 'Acesso negado.'
-            });
+            return res
+                .status(403)
+                .json({
+                    error:
+                        'Acesso negado.'
+                });
         }
+
 
         db.all(
             `
@@ -575,55 +770,75 @@ app.get(
                 username,
                 username
             ],
-            (err, rows) => {
+            (
+                err,
+                rows
+            ) => {
 
                 if (err) {
 
-                    console.error(err);
-
-                    return res.status(500).send(
-                        'Erro ao buscar amigos'
-                    );
+                    return res
+                        .status(500)
+                        .send(
+                            'Erro ao buscar amigos'
+                        );
                 }
 
-                const friendNames = [];
-                const pendingNames = [];
 
-                rows.forEach(row => {
+                const friends = [];
+                const pending = [];
 
-                    if (
-                        row.status ===
-                        'accepted'
-                    ) {
 
-                        friendNames.push(
-                            row.user1 === username
-                                ? row.user2
-                                : row.user1
-                        );
+                rows.forEach(
+                    row => {
 
-                    } else if (
-                        row.status === 'pending' &&
-                        row.user2 === username
-                    ) {
+                        if (
+                            row.status ===
+                            'accepted'
+                        ) {
 
-                        pendingNames.push(
-                            row.user1
-                        );
+                            friends.push(
+                                row.user1 ===
+                                username
+                                    ? row.user2
+                                    : row.user1
+                            );
+
+                        }
+
+
+                        if (
+                            row.status ===
+                                'pending' &&
+                            row.user2 ===
+                                username
+                        ) {
+
+                            pending.push(
+                                row.user1
+                            );
+
+                        }
 
                     }
+                );
 
-                });
 
-                const getDetails =
-                    (names, callback) => {
+                const details =
+                    (
+                        names,
+                        callback
+                    ) => {
 
                         if (
                             names.length === 0
                         ) {
 
-                            return callback([]);
+                            return callback(
+                                []
+                            );
                         }
+
 
                         const placeholders =
                             names
@@ -632,6 +847,7 @@ app.get(
                                 )
                                 .join(',');
 
+
                         db.all(
                             `
                             SELECT username, avatar
@@ -639,10 +855,14 @@ app.get(
                             WHERE username IN (${placeholders})
                             `,
                             names,
-                            (err, results) => {
+                            (
+                                err,
+                                result
+                            ) => {
 
                                 callback(
-                                    results || []
+                                    result ||
+                                    []
                                 );
 
                             }
@@ -650,17 +870,20 @@ app.get(
 
                     };
 
-                getDetails(
-                    friendNames,
-                    friends => {
 
-                        getDetails(
-                            pendingNames,
-                            pendingRequests => {
+                details(
+                    friends,
+                    friendData => {
+
+                        details(
+                            pending,
+                            pendingData => {
 
                                 res.json({
-                                    friends,
-                                    pendingRequests
+                                    friends:
+                                        friendData,
+                                    pendingRequests:
+                                        pendingData
                                 });
 
                             }
@@ -674,6 +897,7 @@ app.get(
 
     }
 );
+
 
 /* ======================================================
    ADICIONAR AMIGO
@@ -689,24 +913,33 @@ app.post(
 
         const friendName =
             String(
-                req.body.friendName || ''
+                req.body.friendName ||
+                ''
             ).trim();
+
 
         if (!friendName) {
 
-            return res.status(400).send(
-                'Digite um usuário.'
-            );
+            return res
+                .status(400)
+                .send(
+                    'Digite um usuário.'
+                );
         }
+
 
         if (
-            username === friendName
+            username ===
+            friendName
         ) {
 
-            return res.status(400).send(
-                'Você não pode se adicionar.'
-            );
+            return res
+                .status(400)
+                .send(
+                    'Você não pode se adicionar.'
+                );
         }
+
 
         db.get(
             `
@@ -714,22 +947,33 @@ app.post(
             FROM users
             WHERE username = ?
             `,
-            [friendName],
-            (err, user) => {
+            [
+                friendName
+            ],
+            (
+                err,
+                user
+            ) => {
 
                 if (err) {
 
-                    return res.status(500).send(
-                        'Erro no servidor.'
-                    );
+                    return res
+                        .status(500)
+                        .send(
+                            'Erro no servidor.'
+                        );
                 }
+
 
                 if (!user) {
 
-                    return res.status(404).send(
-                        'Usuário não encontrado!'
-                    );
+                    return res
+                        .status(404)
+                        .send(
+                            'Usuário não encontrado!'
+                        );
                 }
+
 
                 db.get(
                     `
@@ -746,14 +990,20 @@ app.post(
                         friendName,
                         username
                     ],
-                    (err, existing) => {
+                    (
+                        err,
+                        existing
+                    ) => {
 
                         if (err) {
 
-                            return res.status(500).send(
-                                'Erro no servidor.'
-                            );
+                            return res
+                                .status(500)
+                                .send(
+                                    'Erro no servidor.'
+                                );
                         }
+
 
                         if (existing) {
 
@@ -762,15 +1012,21 @@ app.post(
                                 'accepted'
                             ) {
 
-                                return res.status(400).send(
-                                    'Vocês já são amigos.'
-                                );
+                                return res
+                                    .status(400)
+                                    .send(
+                                        'Vocês já são amigos.'
+                                    );
                             }
 
-                            return res.status(400).send(
-                                'Já existe um pedido pendente entre vocês.'
-                            );
+
+                            return res
+                                .status(400)
+                                .send(
+                                    'Já existe um pedido pendente entre vocês.'
+                                );
                         }
+
 
                         db.run(
                             `
@@ -786,23 +1042,24 @@ app.post(
 
                                 if (err) {
 
-                                    console.error(err);
-
-                                    return res.status(500).send(
-                                        'Erro ao enviar pedido.'
+                                    console.error(
+                                        err
                                     );
+
+                                    return res
+                                        .status(500)
+                                        .send(
+                                            'Erro ao enviar pedido.'
+                                        );
                                 }
 
-                                /*
-                                   Avisar o outro usuário
-                                   imediatamente.
-                                */
 
                                 io.to(
                                     friendName
                                 ).emit(
                                     'refresh friends'
                                 );
+
 
                                 res.send(
                                     'Pedido de amizade enviado!'
@@ -820,6 +1077,7 @@ app.post(
     }
 );
 
+
 /* ======================================================
    ACEITAR AMIGO
 ====================================================== */
@@ -834,8 +1092,10 @@ app.post(
 
         const friendName =
             String(
-                req.body.friendName || ''
+                req.body.friendName ||
+                ''
             ).trim();
+
 
         db.run(
             `
@@ -854,21 +1114,25 @@ app.post(
 
                 if (err) {
 
-                    console.error(err);
-
-                    return res.status(500).send(
-                        'Erro ao aceitar pedido.'
-                    );
+                    return res
+                        .status(500)
+                        .send(
+                            'Erro ao aceitar pedido.'
+                        );
                 }
+
 
                 if (
                     this.changes === 0
                 ) {
 
-                    return res.status(400).send(
-                        'Pedido não encontrado.'
-                    );
+                    return res
+                        .status(400)
+                        .send(
+                            'Pedido não encontrado.'
+                        );
                 }
+
 
                 io.to(
                     friendName
@@ -876,11 +1140,13 @@ app.post(
                     'refresh friends'
                 );
 
+
                 io.to(
                     username
                 ).emit(
                     'refresh friends'
                 );
+
 
                 res.send(
                     'Pedido aceito!'
@@ -891,6 +1157,7 @@ app.post(
 
     }
 );
+
 
 /* ======================================================
    REMOVER AMIGO
@@ -906,8 +1173,10 @@ app.post(
 
         const friendName =
             String(
-                req.body.friendName || ''
+                req.body.friendName ||
+                ''
             ).trim();
+
 
         db.run(
             `
@@ -927,18 +1196,20 @@ app.post(
 
                 if (err) {
 
-                    console.error(err);
-
-                    return res.status(500).send(
-                        'Erro ao remover amizade.'
-                    );
+                    return res
+                        .status(500)
+                        .send(
+                            'Erro ao remover amizade.'
+                        );
                 }
+
 
                 io.to(
                     friendName
                 ).emit(
                     'refresh friends'
                 );
+
 
                 res.send(
                     'Amizade removida.'
@@ -950,602 +1221,657 @@ app.post(
     }
 );
 
+
 /* ======================================================
    SOCKET.IO
 ====================================================== */
 
 const activeUsers = {};
 
-io.on('connection', socket => {
 
-    socket.callRoom = null;
-    socket.username = null;
+io.on(
+    'connection',
+    socket => {
 
-    /* ==================================================
-       REGISTRAR USUÁRIO
-    ================================================== */
+        socket.callRoom = null;
+        socket.username = null;
 
-    socket.on(
-        'register user',
-        username => {
 
-            if (!username) {
-                return;
-            }
+        /* ================================================
+           REGISTRAR USUÁRIO
+        ================================================ */
 
-            activeUsers[socket.id] =
-                username;
+        socket.on(
+            'register user',
+            username => {
 
-            socket.username =
-                username;
-
-            socket.join(
-                username
-            );
-
-            console.log(
-                `Usuário conectado: ${username}`
-            );
-
-        }
-    );
-
-    /* ==================================================
-       ATUALIZAR AMIGOS
-    ================================================== */
-
-    socket.on(
-        'notify update',
-        targetUser => {
-
-            if (!targetUser) {
-                return;
-            }
-
-            io.to(
-                targetUser
-            ).emit(
-                'refresh friends'
-            );
-
-        }
-    );
-
-    /* ==================================================
-       FECHAR CHAT
-    ================================================== */
-
-    socket.on(
-        'force close chat',
-        data => {
-
-            if (!data) {
-                return;
-            }
-
-            if (!data.targetUser) {
-                return;
-            }
-
-            io.to(
-                data.targetUser
-            ).emit(
-                'close chat with',
-                data.currentUser
-            );
-
-        }
-    );
-
-    /* ==================================================
-       ENTRAR NA SALA
-    ================================================== */
-
-    socket.on(
-        'join room',
-        room => {
-
-            if (!room) {
-                return;
-            }
-
-            /*
-               Sai das salas anteriores,
-               mantendo somente o próprio ID
-               e a sala do usuário.
-            */
-
-            [...socket.rooms].forEach(r => {
-
-                if (
-                    r !== socket.id &&
-                    r !== socket.username
-                ) {
-
-                    socket.leave(r);
+                if (!username) {
+                    return;
                 }
 
-            });
 
-            socket.join(room);
+                activeUsers[
+                    socket.id
+                ] = username;
 
-            const parts =
-                room.includes('_')
-                    ? room.split('_')
-                    : room.split('-');
 
-            if (
-                parts.length < 2
-            ) {
-                return;
+                socket.username =
+                    username;
+
+
+                socket.join(
+                    username
+                );
+
+
+                console.log(
+                    'Socket conectado:',
+                    username
+                );
+
             }
+        );
 
-            db.all(
-                `
-                SELECT *
-                FROM private_messages
-                WHERE
-                (sender = ? AND receiver = ?)
-                OR
-                (sender = ? AND receiver = ?)
-                ORDER BY id ASC
-                `,
-                [
-                    parts[0],
-                    parts[1],
-                    parts[1],
-                    parts[0]
-                ],
-                async (err, rows) => {
 
-                    if (
-                        err ||
-                        !rows
-                    ) {
-                        return;
-                    }
+        /* ================================================
+           ATUALIZAR AMIGOS
+        ================================================ */
 
-                    const enhancedRows = [];
+        socket.on(
+            'notify update',
+            targetUser => {
 
-                    for (
-                        const msg of rows
-                    ) {
+                if (!targetUser) {
+                    return;
+                }
 
-                        await new Promise(
-                            resolve => {
 
-                                db.get(
-                                    `
-                                    SELECT avatar
-                                    FROM users
-                                    WHERE username = ?
-                                    `,
-                                    [msg.sender],
-                                    (err, user) => {
+                io.to(
+                    targetUser
+                ).emit(
+                    'refresh friends'
+                );
 
-                                        enhancedRows.push({
-                                            ...msg,
-                                            avatar:
-                                                user
-                                                    ? user.avatar
-                                                    : ''
-                                        });
+            }
+        );
 
-                                        resolve();
-                                    }
-                                );
 
-                            }
-                        );
+        /* ================================================
+           FECHAR CHAT
+        ================================================ */
 
-                    }
+        socket.on(
+            'force close chat',
+            data => {
 
-                    socket.emit(
-                        'load private history',
-                        enhancedRows
+                if (!data) {
+                    return;
+                }
+
+
+                if (
+                    data.targetUser
+                ) {
+
+                    io.to(
+                        data.targetUser
+                    ).emit(
+                        'close chat with',
+                        data.currentUser
                     );
 
                 }
-            );
 
-        }
-    );
-
-    /* ==================================================
-       MENSAGEM PRIVADA
-    ================================================== */
-
-    socket.on(
-        'private message',
-        data => {
-
-            if (!data) {
-                return;
             }
+        );
 
-            if (
-                !data.sender ||
-                !data.receiver ||
-                !data.message ||
-                !data.room
-            ) {
-                return;
-            }
 
-            /*
-               Segurança:
-               o usuário conectado só pode
-               enviar como ele mesmo.
-            */
+        /* ================================================
+           ENTRAR NA SALA
+        ================================================ */
 
-            if (
-                socket.username &&
-                data.sender !== socket.username
-            ) {
-                return;
-            }
+        socket.on(
+            'join room',
+            room => {
 
-            db.get(
-                `
-                SELECT avatar
-                FROM users
-                WHERE username = ?
-                `,
-                [data.sender],
-                (err, userRow) => {
+                if (!room) {
+                    return;
+                }
 
-                    const senderAvatar =
-                        userRow
-                            ? userRow.avatar
-                            : '';
 
-                    db.run(
-                        `
-                        INSERT INTO private_messages
-                        (sender, receiver, message)
-                        VALUES (?, ?, ?)
-                        `,
-                        [
-                            data.sender,
-                            data.receiver,
-                            data.message
-                        ],
-                        err => {
-
-                            if (err) {
-
-                                console.error(
-                                    'Erro ao salvar mensagem:',
-                                    err
-                                );
-
-                                return;
-                            }
-
-                            const messageData = {
-                                ...data,
-                                avatar:
-                                    senderAvatar
-                            };
-
-                            /*
-                               Envia para quem está
-                               dentro da sala.
-                            */
-
-                            io.to(
-                                data.room
-                            ).emit(
-                                'private message',
-                                messageData
-                            );
-
-                            /*
-                               Se o destinatário estiver
-                               online mas não estiver na
-                               sala, envia diretamente.
-                            */
-
-                            const receiverSockets =
-                                io.sockets.adapter.rooms.get(
-                                    data.receiver
-                                );
+                [...socket.rooms]
+                    .forEach(
+                        r => {
 
                             if (
-                                receiverSockets
+                                r !==
+                                    socket.id &&
+                                r !==
+                                    socket.username
                             ) {
 
-                                for (
-                                    const socketId
-                                    of receiverSockets
-                                ) {
-
-                                    const receiverSocket =
-                                        io.sockets.sockets.get(
-                                            socketId
-                                        );
-
-                                    if (
-                                        receiverSocket &&
-                                        !receiverSocket.rooms.has(
-                                            data.room
-                                        )
-                                    ) {
-
-                                        receiverSocket.emit(
-                                            'private message',
-                                            messageData
-                                        );
-
-                                    }
-
-                                }
+                                socket.leave(
+                                    r
+                                );
 
                             }
 
                         }
                     );
 
+
+                socket.join(
+                    room
+                );
+
+
+                const parts =
+                    room.includes('_')
+                        ? room.split('_')
+                        : room.split('-');
+
+
+                if (
+                    parts.length < 2
+                ) {
+
+                    return;
                 }
-            );
 
-        }
-    );
 
-    /* ==================================================
-       CALL OFFER
-    ================================================== */
+                db.all(
+                    `
+                    SELECT *
+                    FROM private_messages
+                    WHERE
+                    (sender = ? AND receiver = ?)
+                    OR
+                    (sender = ? AND receiver = ?)
+                    ORDER BY id ASC
+                    `,
+                    [
+                        parts[0],
+                        parts[1],
+                        parts[1],
+                        parts[0]
+                    ],
+                    async (
+                        err,
+                        rows
+                    ) => {
 
-    socket.on(
-        'call-offer',
-        data => {
+                        if (
+                            err ||
+                            !rows
+                        ) {
 
-            if (
-                !data ||
-                !data.room
-            ) {
-                return;
+                            return;
+                        }
+
+
+                        const messages = [];
+
+
+                        for (
+                            const msg of rows
+                        ) {
+
+                            await new Promise(
+                                resolve => {
+
+                                    db.get(
+                                        `
+                                        SELECT avatar
+                                        FROM users
+                                        WHERE username = ?
+                                        `,
+                                        [
+                                            msg.sender
+                                        ],
+                                        (
+                                            err,
+                                            user
+                                        ) => {
+
+                                            messages.push({
+                                                ...msg,
+                                                avatar:
+                                                    user
+                                                        ? user.avatar
+                                                        : ''
+                                            });
+
+
+                                            resolve();
+
+                                        }
+                                    );
+
+                                }
+                            );
+
+                        }
+
+
+                        socket.emit(
+                            'load private history',
+                            messages
+                        );
+
+                    }
+                );
+
             }
+        );
 
-            socket.callRoom =
-                data.room;
 
-            socket.to(
-                data.room
-            ).emit(
-                'call-offer',
-                data
-            );
+        /* ================================================
+           MENSAGEM
+        ================================================ */
 
-        }
-    );
+        socket.on(
+            'private message',
+            data => {
 
-    /* ==================================================
-       CALL ANSWER
-    ================================================== */
+                if (!data) {
+                    return;
+                }
 
-    socket.on(
-        'call-answer',
-        data => {
 
-            if (
-                !data ||
-                !data.room
-            ) {
-                return;
+                if (
+                    !data.sender ||
+                    !data.receiver ||
+                    !data.message ||
+                    !data.room
+                ) {
+
+                    return;
+                }
+
+
+                if (
+                    socket.username &&
+                    data.sender !==
+                        socket.username
+                ) {
+
+                    return;
+                }
+
+
+                db.get(
+                    `
+                    SELECT avatar
+                    FROM users
+                    WHERE username = ?
+                    `,
+                    [
+                        data.sender
+                    ],
+                    (
+                        err,
+                        user
+                    ) => {
+
+                        const avatar =
+                            user
+                                ? user.avatar
+                                : '';
+
+
+                        db.run(
+                            `
+                            INSERT INTO private_messages
+                            (sender, receiver, message)
+                            VALUES (?, ?, ?)
+                            `,
+                            [
+                                data.sender,
+                                data.receiver,
+                                data.message
+                            ],
+                            err => {
+
+                                if (err) {
+
+                                    console.error(
+                                        err
+                                    );
+
+                                    return;
+                                }
+
+
+                                const message = {
+                                    ...data,
+                                    avatar
+                                };
+
+
+                                io.to(
+                                    data.room
+                                ).emit(
+                                    'private message',
+                                    message
+                                );
+
+
+                                const sockets =
+                                    io
+                                        .sockets
+                                        .adapter
+                                        .rooms
+                                        .get(
+                                            data.receiver
+                                        );
+
+
+                                if (
+                                    sockets
+                                ) {
+
+                                    for (
+                                        const socketId
+                                        of sockets
+                                    ) {
+
+                                        const receiver =
+                                            io
+                                                .sockets
+                                                .sockets
+                                                .get(
+                                                    socketId
+                                                );
+
+
+                                        if (
+                                            receiver &&
+                                            !receiver
+                                                .rooms
+                                                .has(
+                                                    data.room
+                                                )
+                                        ) {
+
+                                            receiver.emit(
+                                                'private message',
+                                                message
+                                            );
+
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+                        );
+
+                    }
+                );
+
             }
+        );
 
-            socket.callRoom =
-                data.room;
 
-            socket.to(
-                data.room
-            ).emit(
-                'call-answer',
-                data
-            );
+        /* ================================================
+           CHAMADA
+        ================================================ */
 
-        }
-    );
+        socket.on(
+            'call-offer',
+            data => {
 
-    /* ==================================================
-       RENEGOTIATION OFFER
-    ================================================== */
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
 
-    socket.on(
-        'renegotiation-offer',
-        data => {
-
-            if (
-                !data ||
-                !data.room
-            ) {
-                return;
-            }
-
-            socket.callRoom =
-                data.room;
-
-            socket.to(
-                data.room
-            ).emit(
-                'renegotiation-offer',
-                data
-            );
-
-        }
-    );
-
-    /* ==================================================
-       RENEGOTIATION ANSWER
-    ================================================== */
-
-    socket.on(
-        'renegotiation-answer',
-        data => {
-
-            if (
-                !data ||
-                !data.room
-            ) {
-                return;
-            }
-
-            socket.callRoom =
-                data.room;
-
-            socket.to(
-                data.room
-            ).emit(
-                'renegotiation-answer',
-                data
-            );
-
-        }
-    );
-
-    /* ==================================================
-       ICE
-    ================================================== */
-
-    socket.on(
-        'ice-candidate',
-        data => {
-
-            if (
-                !data ||
-                !data.room
-            ) {
-                return;
-            }
-
-            socket.to(
-                data.room
-            ).emit(
-                'ice-candidate',
-                data
-            );
-
-        }
-    );
-
-    /* ==================================================
-       DESLIGAR
-    ================================================== */
-
-    socket.on(
-        'hang-up',
-        data => {
-
-            if (
-                !data ||
-                !data.room
-            ) {
-                return;
-            }
-
-            if (
-                socket.callRoom ===
-                data.room
-            ) {
 
                 socket.callRoom =
-                    null;
-            }
+                    data.room;
 
-            socket.to(
-                data.room
-            ).emit(
-                'hang-up'
-            );
-
-        }
-    );
-
-    /* ==================================================
-       TELA PAROU
-    ================================================== */
-
-    socket.on(
-        'screen-stopped',
-        data => {
-
-            if (
-                !data ||
-                !data.room
-            ) {
-                return;
-            }
-
-            socket.to(
-                data.room
-            ).emit(
-                'screen-stopped'
-            );
-
-        }
-    );
-
-    /* ==================================================
-       DESCONECTOU
-    ================================================== */
-
-    socket.on(
-        'disconnect',
-        () => {
-
-            const username =
-                activeUsers[socket.id];
-
-            if (
-                socket.callRoom
-            ) {
 
                 socket.to(
-                    socket.callRoom
+                    data.room
+                ).emit(
+                    'call-offer',
+                    data
+                );
+
+            }
+        );
+
+
+        socket.on(
+            'call-answer',
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+
+                socket.callRoom =
+                    data.room;
+
+
+                socket.to(
+                    data.room
+                ).emit(
+                    'call-answer',
+                    data
+                );
+
+            }
+        );
+
+
+        /* ================================================
+           RENEGOCIAÇÃO
+        ================================================ */
+
+        socket.on(
+            'renegotiation-offer',
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+
+                socket.callRoom =
+                    data.room;
+
+
+                socket.to(
+                    data.room
+                ).emit(
+                    'renegotiation-offer',
+                    data
+                );
+
+            }
+        );
+
+
+        socket.on(
+            'renegotiation-answer',
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+
+                socket.callRoom =
+                    data.room;
+
+
+                socket.to(
+                    data.room
+                ).emit(
+                    'renegotiation-answer',
+                    data
+                );
+
+            }
+        );
+
+
+        /* ================================================
+           ICE
+        ================================================ */
+
+        socket.on(
+            'ice-candidate',
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+
+                socket.to(
+                    data.room
+                ).emit(
+                    'ice-candidate',
+                    data
+                );
+
+            }
+        );
+
+
+        /* ================================================
+           DESLIGAR
+        ================================================ */
+
+        socket.on(
+            'hang-up',
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+
+                if (
+                    socket.callRoom ===
+                    data.room
+                ) {
+
+                    socket.callRoom =
+                        null;
+
+                }
+
+
+                socket.to(
+                    data.room
                 ).emit(
                     'hang-up'
                 );
 
             }
+        );
 
-            delete activeUsers[
-                socket.id
-            ];
 
-            if (username) {
+        /* ================================================
+           TELA PAROU
+        ================================================ */
 
-                console.log(
-                    `Usuário desconectado: ${username}`
+        socket.on(
+            'screen-stopped',
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+
+                socket.to(
+                    data.room
+                ).emit(
+                    'screen-stopped'
                 );
 
             }
+        );
 
-        }
-    );
 
-});
+        /* ================================================
+           DESCONECTAR
+        ================================================ */
 
-/* ======================================================
-   ROTA DE TESTE
-====================================================== */
+        socket.on(
+            'disconnect',
+            () => {
 
-app.get('/api/status', (req, res) => {
+                const username =
+                    activeUsers[
+                        socket.id
+                    ];
 
-    res.json({
-        online: true,
-        server: 'Meu Discord',
-        time: new Date().toISOString()
-    });
 
-});
+                if (
+                    socket.callRoom
+                ) {
+
+                    socket.to(
+                        socket.callRoom
+                    ).emit(
+                        'hang-up'
+                    );
+
+                }
+
+
+                delete activeUsers[
+                    socket.id
+                ];
+
+
+                console.log(
+                    'Socket desconectado:',
+                    username || socket.id
+                );
+
+            }
+        );
+
+    }
+);
+
 
 /* ======================================================
    SERVIDOR
 ====================================================== */
 
 const PORT =
-    process.env.PORT || 3000;
+    process.env.PORT ||
+    3000;
+
 
 server.listen(
     PORT,
