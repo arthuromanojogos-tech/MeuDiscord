@@ -1,11 +1,11 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const cors = require('cors');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,6 +16,8 @@ const server = http.createServer(app);
 ====================================================== */
 
 const PORT = process.env.PORT || 3000;
+
+const ROOT_DIR = __dirname;
 
 
 /* ======================================================
@@ -65,18 +67,44 @@ app.use(
 
 
 /* ======================================================
+   ARQUIVOS ESTÁTICOS
+====================================================== */
+
+app.use(
+    '/css',
+    express.static(
+        path.join(ROOT_DIR, 'css')
+    )
+);
+
+app.use(
+    '/js',
+    express.static(
+        path.join(ROOT_DIR, 'js')
+    )
+);
+
+app.use(
+    '/assets',
+    express.static(
+        path.join(ROOT_DIR, 'assets')
+    )
+);
+
+
+/* ======================================================
    BANCO DE DADOS
 ====================================================== */
 
 const db = new sqlite3.Database(
-    path.join(__dirname, 'database.db'),
-    err => {
+    path.join(ROOT_DIR, 'database.db'),
+    error => {
 
-        if (err) {
+        if (error) {
 
             console.error(
                 'Erro ao conectar SQLite:',
-                err
+                error
             );
 
             return;
@@ -140,6 +168,7 @@ function createSession(username) {
             .randomBytes(32)
             .toString('hex');
 
+
     sessions.set(
         token,
         {
@@ -147,6 +176,7 @@ function createSession(username) {
             createdAt: Date.now()
         }
     );
+
 
     return token;
 }
@@ -157,29 +187,31 @@ function getSession(req) {
     const cookies =
         req.headers.cookie;
 
+
     if (!cookies) {
         return null;
     }
+
 
     const match =
         cookies.match(
             /(?:^|;\s*)chat_session=([^;]+)/
         );
 
+
     if (!match) {
         return null;
     }
 
+
     return (
-        sessions.get(match[1]) ||
-        null
+        sessions.get(
+            match[1]
+        ) || null
     );
+
 }
 
-
-/* ======================================================
-   AUTENTICAÇÃO
-====================================================== */
 
 function requireLogin(
     req,
@@ -189,6 +221,7 @@ function requireLogin(
 
     const session =
         getSession(req);
+
 
     if (!session) {
 
@@ -200,12 +233,16 @@ function requireLogin(
                 message:
                     'Não autenticado.'
             });
+
     }
+
 
     req.username =
         session.username;
 
+
     next();
+
 }
 
 
@@ -240,53 +277,20 @@ app.get(
         const session =
             getSession(req);
 
+
         if (session) {
 
-            return res.redirect('/');
-        }
-
-        res.sendFile(
-            path.join(
-                __dirname,
-                'login.html'
-            )
-        );
-
-    }
-);
-
-
-/* ======================================================
-   ROTA PRINCIPAL
-======================================================
-
-   IMPORTANTE:
-   Se não estiver logado, abre o login.html.
-   Não retorna mais o JSON "Não autenticado".
-====================================================== */
-
-app.get(
-    '/',
-    (req, res) => {
-
-        const session =
-            getSession(req);
-
-        if (!session) {
-
-            return res.sendFile(
-                path.join(
-                    __dirname,
-                    'login.html'
-                )
+            return res.redirect(
+                '/index.html'
             );
 
         }
 
+
         res.sendFile(
             path.join(
-                __dirname,
-                'index.html'
+                ROOT_DIR,
+                'login.html'
             )
         );
 
@@ -323,6 +327,7 @@ app.post(
                 .send(
                     'Preencha todos os campos.'
                 );
+
         }
 
 
@@ -335,6 +340,7 @@ app.post(
                 .send(
                     'O usuário precisa ter pelo menos 3 caracteres.'
                 );
+
         }
 
 
@@ -347,6 +353,7 @@ app.post(
                 .send(
                     'A senha precisa ter pelo menos 4 caracteres.'
                 );
+
         }
 
 
@@ -367,26 +374,25 @@ app.post(
                     password,
                     avatar
                 )
-                VALUES (?, ?, ?)
+                VALUES (?, ?, '')
                 `,
                 [
                     username,
-                    hashedPassword,
-                    ''
+                    hashedPassword
                 ],
-                function(err) {
+                function(error) {
 
-                    if (err) {
+                    if (error) {
 
                         console.error(
-                            'Erro ao criar usuário:',
-                            err
+                            'Erro cadastro:',
+                            error
                         );
 
 
                         if (
-                            err.message &&
-                            err.message.includes(
+                            error.message &&
+                            error.message.includes(
                                 'UNIQUE'
                             )
                         ) {
@@ -396,6 +402,7 @@ app.post(
                                 .send(
                                     'Usuário já existe!'
                                 );
+
                         }
 
 
@@ -404,6 +411,7 @@ app.post(
                             .send(
                                 'Erro ao criar conta.'
                             );
+
                     }
 
 
@@ -417,9 +425,9 @@ app.post(
         } catch (error) {
 
             console.error(
-                'Erro no cadastro:',
                 error
             );
+
 
             res
                 .status(500)
@@ -462,6 +470,7 @@ app.post(
                 .send(
                     'Preencha usuário e senha.'
                 );
+
         }
 
 
@@ -475,22 +484,24 @@ app.post(
                 username
             ],
             async (
-                err,
+                error,
                 user
             ) => {
 
-                if (err) {
+                if (error) {
 
                     console.error(
-                        'Erro no login:',
-                        err
+                        'Erro login:',
+                        error
                     );
+
 
                     return res
                         .status(500)
                         .send(
                             'Erro no servidor.'
                         );
+
                 }
 
 
@@ -501,6 +512,7 @@ app.post(
                         .send(
                             'Usuário ou senha incorretos!'
                         );
+
                 }
 
 
@@ -520,6 +532,7 @@ app.post(
                             .send(
                                 'Usuário ou senha incorretos!'
                             );
+
                     }
 
 
@@ -529,18 +542,6 @@ app.post(
                         );
 
 
-                    /*
-                    Cookie:
-
-                    HttpOnly
-                    Secure
-                    SameSite=None
-
-                    Necessário para funcionar
-                    quando o frontend estiver
-                    separado do servidor.
-                    */
-
                     res.setHeader(
                         'Set-Cookie',
                         `chat_session=${token}; HttpOnly; Path=/; SameSite=None; Secure`
@@ -549,7 +550,6 @@ app.post(
 
                     res.json({
                         success: true,
-                        loggedIn: true,
                         username:
                             user.username
                     });
@@ -557,9 +557,9 @@ app.post(
                 } catch (error) {
 
                     console.error(
-                        'Erro ao validar senha:',
                         error
                     );
+
 
                     res
                         .status(500)
@@ -595,6 +595,7 @@ app.get(
                 .json({
                     loggedIn: false
                 });
+
         }
 
 
@@ -654,6 +655,79 @@ app.post(
 
 
 /* ======================================================
+   PÁGINA PRINCIPAL
+====================================================== */
+
+/*
+   IMPORTANTE:
+
+   O login.html manda o usuário para:
+
+       /index.html
+
+   Por isso precisamos ter esta rota.
+
+   Também mantemos / funcionando.
+*/
+
+
+app.get(
+    '/',
+    (req, res) => {
+
+        const session =
+            getSession(req);
+
+
+        if (!session) {
+
+            return res.redirect(
+                '/login.html'
+            );
+
+        }
+
+
+        res.sendFile(
+            path.join(
+                ROOT_DIR,
+                'index.html'
+            )
+        );
+
+    }
+);
+
+
+app.get(
+    '/index.html',
+    (req, res) => {
+
+        const session =
+            getSession(req);
+
+
+        if (!session) {
+
+            return res.redirect(
+                '/login.html'
+            );
+
+        }
+
+
+        res.sendFile(
+            path.join(
+                ROOT_DIR,
+                'index.html'
+            )
+        );
+
+    }
+);
+
+
+/* ======================================================
    AVATAR
 ====================================================== */
 
@@ -679,19 +753,21 @@ app.post(
                 avatar,
                 username
             ],
-            function(err) {
+            function(error) {
 
-                if (err) {
+                if (error) {
 
                     console.error(
-                        err
+                        error
                     );
+
 
                     return res
                         .status(500)
                         .send(
                             'Erro ao atualizar avatar.'
                         );
+
                 }
 
 
@@ -729,12 +805,12 @@ app.get(
                 username
             ],
             (
-                err,
+                error,
                 user
             ) => {
 
                 if (
-                    err ||
+                    error ||
                     !user
                 ) {
 
@@ -781,6 +857,7 @@ app.get(
                     error:
                         'Acesso negado.'
                 });
+
         }
 
 
@@ -788,29 +865,32 @@ app.get(
             `
             SELECT *
             FROM friendships
-            WHERE user1 = ?
-            OR user2 = ?
+            WHERE
+                user1 = ?
+                OR user2 = ?
             `,
             [
                 username,
                 username
             ],
             (
-                err,
+                error,
                 rows
             ) => {
 
-                if (err) {
+                if (error) {
 
                     console.error(
-                        err
+                        error
                     );
+
 
                     return res
                         .status(500)
                         .send(
-                            'Erro ao buscar amigos.'
+                            'Erro ao buscar amigos'
                         );
+
                 }
 
 
@@ -827,8 +907,7 @@ app.get(
                         ) {
 
                             friends.push(
-                                row.user1 ===
-                                username
+                                row.user1 === username
                                     ? row.user2
                                     : row.user1
                             );
@@ -886,7 +965,7 @@ app.get(
                             `,
                             names,
                             (
-                                err,
+                                error,
                                 result
                             ) => {
 
@@ -953,6 +1032,7 @@ app.post(
                 .send(
                     'Digite um usuário.'
                 );
+
         }
 
 
@@ -966,6 +1046,7 @@ app.post(
                 .send(
                     'Você não pode se adicionar.'
                 );
+
         }
 
 
@@ -979,21 +1060,23 @@ app.post(
                 friendName
             ],
             (
-                err,
+                error,
                 user
             ) => {
 
-                if (err) {
+                if (error) {
 
                     console.error(
-                        err
+                        error
                     );
+
 
                     return res
                         .status(500)
                         .send(
                             'Erro no servidor.'
                         );
+
                 }
 
 
@@ -1004,6 +1087,7 @@ app.post(
                         .send(
                             'Usuário não encontrado!'
                         );
+
                 }
 
 
@@ -1012,9 +1096,9 @@ app.post(
                     SELECT *
                     FROM friendships
                     WHERE
-                    (user1 = ? AND user2 = ?)
-                    OR
-                    (user1 = ? AND user2 = ?)
+                        (user1 = ? AND user2 = ?)
+                        OR
+                        (user1 = ? AND user2 = ?)
                     `,
                     [
                         username,
@@ -1023,17 +1107,18 @@ app.post(
                         username
                     ],
                     (
-                        err,
+                        error,
                         existing
                     ) => {
 
-                        if (err) {
+                        if (error) {
 
                             return res
                                 .status(500)
                                 .send(
                                     'Erro no servidor.'
                                 );
+
                         }
 
 
@@ -1049,6 +1134,7 @@ app.post(
                                     .send(
                                         'Vocês já são amigos.'
                                     );
+
                             }
 
 
@@ -1064,26 +1150,32 @@ app.post(
                         db.run(
                             `
                             INSERT INTO friendships
-                            (user1, user2, status)
+                            (
+                                user1,
+                                user2,
+                                status
+                            )
                             VALUES (?, ?, 'pending')
                             `,
                             [
                                 username,
                                 friendName
                             ],
-                            err => {
+                            error => {
 
-                                if (err) {
+                                if (error) {
 
                                     console.error(
-                                        err
+                                        error
                                     );
+
 
                                     return res
                                         .status(500)
                                         .send(
                                             'Erro ao enviar pedido.'
                                         );
+
                                 }
 
 
@@ -1134,27 +1226,24 @@ app.post(
             UPDATE friendships
             SET status = 'accepted'
             WHERE
-            user1 = ?
-            AND user2 = ?
-            AND status = 'pending'
+                user1 = ?
+                AND user2 = ?
+                AND status = 'pending'
             `,
             [
                 friendName,
                 username
             ],
-            function(err) {
+            function(error) {
 
-                if (err) {
-
-                    console.error(
-                        err
-                    );
+                if (error) {
 
                     return res
                         .status(500)
                         .send(
                             'Erro ao aceitar pedido.'
                         );
+
                 }
 
 
@@ -1167,6 +1256,7 @@ app.post(
                         .send(
                             'Pedido não encontrado.'
                         );
+
                 }
 
 
@@ -1217,9 +1307,9 @@ app.post(
             `
             DELETE FROM friendships
             WHERE
-            (user1 = ? AND user2 = ?)
-            OR
-            (user1 = ? AND user2 = ?)
+                (user1 = ? AND user2 = ?)
+                OR
+                (user1 = ? AND user2 = ?)
             `,
             [
                 username,
@@ -1227,19 +1317,16 @@ app.post(
                 friendName,
                 username
             ],
-            err => {
+            error => {
 
-                if (err) {
-
-                    console.error(
-                        err
-                    );
+                if (error) {
 
                     return res
                         .status(500)
                         .send(
                             'Erro ao remover amizade.'
                         );
+
                 }
 
 
@@ -1276,9 +1363,9 @@ io.on(
         socket.username = null;
 
 
-        /* ================================================
+        /* ==================================================
            REGISTRAR USUÁRIO
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'register user',
@@ -1312,9 +1399,9 @@ io.on(
         );
 
 
-        /* ================================================
+        /* ==================================================
            ATUALIZAR AMIGOS
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'notify update',
@@ -1335,9 +1422,9 @@ io.on(
         );
 
 
-        /* ================================================
+        /* ==================================================
            FECHAR CHAT
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'force close chat',
@@ -1362,9 +1449,9 @@ io.on(
         );
 
 
-        /* ================================================
+        /* ==================================================
            ENTRAR NA SALA
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'join room',
@@ -1375,23 +1462,24 @@ io.on(
                 }
 
 
-                [...socket.rooms]
-                    .forEach(
-                        r => {
+                [
+                    ...socket.rooms
+                ].forEach(
+                    r => {
 
-                            if (
-                                r !== socket.id &&
-                                r !== socket.username
-                            ) {
+                        if (
+                            r !== socket.id &&
+                            r !== socket.username
+                        ) {
 
-                                socket.leave(
-                                    r
-                                );
-
-                            }
+                            socket.leave(
+                                r
+                            );
 
                         }
-                    );
+
+                    }
+                );
 
 
                 socket.join(
@@ -1418,9 +1506,9 @@ io.on(
                     SELECT *
                     FROM private_messages
                     WHERE
-                    (sender = ? AND receiver = ?)
-                    OR
-                    (sender = ? AND receiver = ?)
+                        (sender = ? AND receiver = ?)
+                        OR
+                        (sender = ? AND receiver = ?)
                     ORDER BY id ASC
                     `,
                     [
@@ -1430,18 +1518,14 @@ io.on(
                         parts[0]
                     ],
                     async (
-                        err,
+                        error,
                         rows
                     ) => {
 
                         if (
-                            err ||
+                            error ||
                             !rows
                         ) {
-
-                            console.error(
-                                err
-                            );
 
                             return;
                         }
@@ -1467,7 +1551,7 @@ io.on(
                                             msg.sender
                                         ],
                                         (
-                                            err,
+                                            error,
                                             user
                                         ) => {
 
@@ -1503,9 +1587,9 @@ io.on(
         );
 
 
-        /* ================================================
+        /* ==================================================
            MENSAGEM PRIVADA
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'private message',
@@ -1547,7 +1631,7 @@ io.on(
                         data.sender
                     ],
                     (
-                        err,
+                        error,
                         user
                     ) => {
 
@@ -1560,7 +1644,11 @@ io.on(
                         db.run(
                             `
                             INSERT INTO private_messages
-                            (sender, receiver, message)
+                            (
+                                sender,
+                                receiver,
+                                message
+                            )
                             VALUES (?, ?, ?)
                             `,
                             [
@@ -1568,12 +1656,12 @@ io.on(
                                 data.receiver,
                                 data.message
                             ],
-                            err => {
+                            error => {
 
-                                if (err) {
+                                if (error) {
 
                                     console.error(
-                                        err
+                                        error
                                     );
 
                                     return;
@@ -1604,7 +1692,9 @@ io.on(
                                         );
 
 
-                                if (sockets) {
+                                if (
+                                    sockets
+                                ) {
 
                                     for (
                                         const socketId
@@ -1622,11 +1712,9 @@ io.on(
 
                                         if (
                                             receiver &&
-                                            !receiver
-                                                .rooms
-                                                .has(
-                                                    data.room
-                                                )
+                                            !receiver.rooms.has(
+                                                data.room
+                                            )
                                         ) {
 
                                             receiver.emit(
@@ -1650,9 +1738,9 @@ io.on(
         );
 
 
-        /* ================================================
+        /* ==================================================
            CHAMADA
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'call-offer',
@@ -1708,9 +1796,9 @@ io.on(
         );
 
 
-        /* ================================================
+        /* ==================================================
            RENEGOCIAÇÃO
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'renegotiation-offer',
@@ -1766,9 +1854,9 @@ io.on(
         );
 
 
-        /* ================================================
+        /* ==================================================
            ICE
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'ice-candidate',
@@ -1793,9 +1881,9 @@ io.on(
         );
 
 
-        /* ================================================
+        /* ==================================================
            DESLIGAR
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'hang-up',
@@ -1830,9 +1918,9 @@ io.on(
         );
 
 
-        /* ================================================
+        /* ==================================================
            TELA PAROU
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'screen-stopped',
@@ -1856,9 +1944,9 @@ io.on(
         );
 
 
-        /* ================================================
+        /* ==================================================
            DESCONECTAR
-        ================================================ */
+        ================================================== */
 
         socket.on(
             'disconnect',
@@ -1902,42 +1990,37 @@ io.on(
 
 
 /* ======================================================
-   ARQUIVOS ESTÁTICOS
+   ERROS DO SERVIDOR
 ====================================================== */
 
-app.use(
-    '/css',
-    express.static(
-        path.join(
-            __dirname,
-            'css'
-        )
-    )
+process.on(
+    'uncaughtException',
+    error => {
+
+        console.error(
+            'Erro não tratado:',
+            error
+        );
+
+    }
 );
 
-app.use(
-    '/js',
-    express.static(
-        path.join(
-            __dirname,
-            'js'
-        )
-    )
-);
 
-app.use(
-    '/assets',
-    express.static(
-        path.join(
-            __dirname,
-            'assets'
-        )
-    )
+process.on(
+    'unhandledRejection',
+    error => {
+
+        console.error(
+            'Promise rejeitada:',
+            error
+        );
+
+    }
 );
 
 
 /* ======================================================
-   SERVIDOR
+   INICIAR SERVIDOR
 ====================================================== */
 
 server.listen(
