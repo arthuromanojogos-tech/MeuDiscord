@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -24,10 +23,6 @@ body {
     background: #313338;
     color: #dbdee1;
 }
-
-/* =====================================================
-   BODY
-===================================================== */
 
 body {
     display: flex;
@@ -895,23 +890,28 @@ body {
 }
 
 /* =====================================================
-   FULLSCREEN
+   FULLSCREEN NATIVO
 ===================================================== */
 
 #screen-share-container:fullscreen {
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     min-height: 100vh;
+    min-height: 100dvh;
     padding: 0;
     display: flex !important;
     align-items: center;
     justify-content: center;
+    background: #000;
 }
 
 #screen-share-container:fullscreen #remote-screen {
     width: 100%;
     height: 100%;
+    max-width: 100vw;
     max-height: 100vh;
+    max-height: 100dvh;
     min-height: 0;
     border-radius: 0;
     object-fit: contain;
@@ -927,13 +927,110 @@ body {
     bottom: 20px;
 }
 
-/* iOS / WebKit fullscreen */
+/* =====================================================
+   FULLSCREEN MOBILE FALLBACK
+===================================================== */
 
-#remote-screen:-webkit-full-screen {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    background: black;
+body.fullscreen-active {
+    overflow: hidden !important;
+}
+
+#screen-share-container.mobile-fullscreen {
+    position: fixed !important;
+    inset: 0 !important;
+
+    width: 100vw !important;
+
+    height: 100vh !important;
+    height: 100dvh !important;
+
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+
+    background: #000 !important;
+
+    z-index: 999999 !important;
+
+    display: flex !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    padding: 0 !important;
+
+    border: none !important;
+}
+
+#screen-share-container.mobile-fullscreen #remote-screen {
+
+    width: 100vw !important;
+
+    height: 100vh !important;
+    height: 100dvh !important;
+
+    max-width: 100vw !important;
+
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+
+    min-width: 0 !important;
+    min-height: 0 !important;
+
+    object-fit: contain !important;
+
+    background: #000 !important;
+
+    border-radius: 0 !important;
+}
+
+#screen-share-container.mobile-fullscreen .fullscreen-btn {
+
+    position: fixed !important;
+
+    right: 15px !important;
+    bottom: 15px !important;
+
+    z-index: 1000001 !important;
+
+    width: 48px !important;
+    height: 48px !important;
+
+    padding: 0 !important;
+
+    display: flex !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    background: rgba(0,0,0,.75) !important;
+
+    border: 1px solid rgba(255,255,255,.2) !important;
+
+    border-radius: 50% !important;
+
+    font-size: 22px !important;
+}
+
+#screen-share-container.mobile-fullscreen .screen-quality-panel {
+
+    position: fixed !important;
+
+    left: 15px !important;
+    bottom: 15px !important;
+
+    z-index: 1000001 !important;
+
+    background: rgba(0,0,0,.75) !important;
+}
+
+/* =====================================================
+   iOS VIDEO
+===================================================== */
+
+#remote-screen {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
 }
 
 /* =====================================================
@@ -956,6 +1053,37 @@ body {
 
     .chat-form {
         padding: 5px;
+    }
+
+    #screen-share-container.mobile-fullscreen #remote-screen {
+
+        width: 100vw !important;
+        height: 100dvh !important;
+
+        object-fit: contain !important;
+
+    }
+
+}
+
+/* =====================================================
+   FULLSCREEN MOBILE CONTROLES
+===================================================== */
+
+@media (max-width: 768px) {
+
+    #screen-share-container.mobile-fullscreen .screen-quality-panel {
+
+        left: 10px !important;
+        bottom: 10px !important;
+
+    }
+
+    #screen-share-container.mobile-fullscreen .fullscreen-btn {
+
+        right: 10px !important;
+        bottom: 10px !important;
+
     }
 
 }
@@ -1115,7 +1243,7 @@ body {
             id="remote-screen"
             autoplay
             playsinline
-            controls="false"
+            webkit-playsinline
         ></video>
 
         <div class="screen-quality-panel">
@@ -1368,7 +1496,6 @@ function isMobile() {
 
 }
 
-
 function mobileOpenChat() {
 
     if (!isMobile()) {
@@ -1386,7 +1513,6 @@ function mobileOpenChat() {
         .remove('mobile-hidden');
 
 }
-
 
 function mobileBackToFriends() {
 
@@ -1446,7 +1572,6 @@ const SCREEN_QUALITIES = {
     }
 
 };
-
 
 function getSelectedScreenQuality() {
 
@@ -2326,10 +2451,6 @@ function openChat(
         currentRoom
     );
 
-
-    /*
-     * MOBILE
-     */
 
     mobileOpenChat();
 
@@ -3719,8 +3840,20 @@ function hideRemoteScreen() {
         null;
 
 
+    container.classList.remove(
+        'mobile-fullscreen'
+    );
+
+    document.body.classList.remove(
+        'fullscreen-active'
+    );
+
+
     container.style.display =
         'none';
+
+
+    updateFullscreenButton();
 
 }
 
@@ -4377,6 +4510,7 @@ socket.on(
 
 /* =====================================================
    FULLSCREEN
+   PC + ANDROID + IPHONE/IPAD
 ===================================================== */
 
 async function toggleFullscreen() {
@@ -4394,31 +4528,14 @@ async function toggleFullscreen() {
 
     try {
 
+        /* =========================================
+           JÁ ESTÁ EM FULLSCREEN NATIVO
+        ========================================= */
+
         if (
-            !document.fullscreenElement
+            document.fullscreenElement ||
+            document.webkitFullscreenElement
         ) {
-
-            if (
-                container.requestFullscreen
-            ) {
-
-                await container.requestFullscreen();
-
-            } else if (
-                video.requestFullscreen
-            ) {
-
-                await video.requestFullscreen();
-
-            } else if (
-                video.webkitRequestFullscreen
-            ) {
-
-                video.webkitRequestFullscreen();
-
-            }
-
-        } else {
 
             if (
                 document.exitFullscreen
@@ -4426,9 +4543,117 @@ async function toggleFullscreen() {
 
                 await document.exitFullscreen();
 
+            } else if (
+                document.webkitExitFullscreen
+            ) {
+
+                document.webkitExitFullscreen();
+
             }
 
+            return;
+
         }
+
+
+        /* =========================================
+           JÁ ESTÁ NO FULLSCREEN VISUAL
+        ========================================= */
+
+        if (
+            container.classList.contains(
+                'mobile-fullscreen'
+            )
+        ) {
+
+            exitMobileFullscreen();
+
+            return;
+
+        }
+
+
+        /* =========================================
+           IPHONE / IPAD
+        ========================================= */
+
+        const isIOS =
+            /iPhone|iPad|iPod/i.test(
+                navigator.userAgent
+            );
+
+
+        if (isIOS) {
+
+            /*
+             * Safari iOS possui fullscreen
+             * próprio para elementos de vídeo.
+             */
+
+            if (
+                typeof video.webkitEnterFullscreen ===
+                'function'
+            ) {
+
+                video.webkitEnterFullscreen();
+
+                return;
+
+            }
+
+            /*
+             * Fallback caso o navegador não
+             * disponibilize fullscreen nativo.
+             */
+
+            enterMobileFullscreen();
+
+            return;
+
+        }
+
+
+        /* =========================================
+           ANDROID / CHROME / EDGE
+        ========================================= */
+
+        if (
+            typeof container.requestFullscreen ===
+            'function'
+        ) {
+
+            await container.requestFullscreen();
+
+            updateFullscreenButton();
+
+            return;
+
+        }
+
+
+        /* =========================================
+           SAFARI / WEBKIT
+        ========================================= */
+
+        if (
+            typeof container.webkitRequestFullscreen ===
+            'function'
+        ) {
+
+            container.webkitRequestFullscreen();
+
+            updateFullscreenButton();
+
+            return;
+
+        }
+
+
+        /* =========================================
+           FALLBACK
+        ========================================= */
+
+        enterMobileFullscreen();
 
     } catch (error) {
 
@@ -4437,9 +4662,228 @@ async function toggleFullscreen() {
             error
         );
 
+        /*
+         * Se o fullscreen nativo falhar,
+         * entra no modo fullscreen visual.
+         */
+
+        enterMobileFullscreen();
+
     }
 
 }
+
+
+/* =====================================================
+   FULLSCREEN VISUAL MOBILE
+===================================================== */
+
+function enterMobileFullscreen() {
+
+    const container =
+        document.getElementById(
+            'screen-share-container'
+        );
+
+    container.classList.add(
+        'mobile-fullscreen'
+    );
+
+    document.body.classList.add(
+        'fullscreen-active'
+    );
+
+    updateFullscreenButton();
+
+}
+
+
+/* =====================================================
+   SAIR FULLSCREEN VISUAL
+===================================================== */
+
+function exitMobileFullscreen() {
+
+    const container =
+        document.getElementById(
+            'screen-share-container'
+        );
+
+    container.classList.remove(
+        'mobile-fullscreen'
+    );
+
+    document.body.classList.remove(
+        'fullscreen-active'
+    );
+
+    updateFullscreenButton();
+
+}
+
+
+/* =====================================================
+   ATUALIZAR BOTÃO
+===================================================== */
+
+function updateFullscreenButton() {
+
+    const button =
+        document.querySelector(
+            '.fullscreen-btn'
+        );
+
+    if (!button) {
+        return;
+    }
+
+
+    const container =
+        document.getElementById(
+            'screen-share-container'
+        );
+
+
+    const isFullscreen =
+        !!(
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            container.classList.contains(
+                'mobile-fullscreen'
+            )
+        );
+
+
+    if (isFullscreen) {
+
+        button.innerText =
+            '✕';
+
+        button.title =
+            'Sair da tela cheia';
+
+    } else {
+
+        button.innerText =
+            '⛶';
+
+        button.title =
+            'Tela cheia';
+
+    }
+
+}
+
+
+/* =====================================================
+   EVENTOS FULLSCREEN
+===================================================== */
+
+document.addEventListener(
+    'fullscreenchange',
+    () => {
+
+        updateFullscreenButton();
+
+    }
+);
+
+
+document.addEventListener(
+    'webkitfullscreenchange',
+    () => {
+
+        updateFullscreenButton();
+
+    }
+);
+
+
+/* =====================================================
+   DETECTAR SAÍDA DO FULLSCREEN DO IPHONE
+===================================================== */
+
+document.addEventListener(
+    'webkitendfullscreen',
+    () => {
+
+        updateFullscreenButton();
+
+    }
+);
+
+
+/* =====================================================
+   ESC PARA SAIR
+===================================================== */
+
+document.addEventListener(
+    'keydown',
+    event => {
+
+        if (
+            event.key === 'Escape'
+        ) {
+
+            const container =
+                document.getElementById(
+                    'screen-share-container'
+                );
+
+
+            if (
+                container.classList.contains(
+                    'mobile-fullscreen'
+                )
+            ) {
+
+                exitMobileFullscreen();
+
+            }
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   TOQUE DUPLO NO VÍDEO
+   ENTRA/SAI DA TELA CHEIA NO CELULAR
+===================================================== */
+
+let lastVideoTap = 0;
+
+document
+    .getElementById('remote-screen')
+    .addEventListener(
+        'touchend',
+        event => {
+
+            const now =
+                Date.now();
+
+
+            if (
+                now - lastVideoTap <
+                300
+            ) {
+
+                event.preventDefault();
+
+                toggleFullscreen();
+
+            }
+
+
+            lastVideoTap =
+                now;
+
+        },
+        {
+            passive: false
+        }
+    );
 
 
 /* =====================================================
@@ -4665,11 +5109,6 @@ window.addEventListener(
     'resize',
     () => {
 
-        /*
-         * Se sair do mobile,
-         * remove os estados mobile.
-         */
-
         if (!isMobile()) {
 
             document
@@ -4700,4 +5139,3 @@ loadFriends();
 
 </body>
 </html>
-```
