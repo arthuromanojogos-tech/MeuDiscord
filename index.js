@@ -1,4 +1,3 @@
-```js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -6,85 +5,112 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-
 
 /* ======================================================
    CORS
 ====================================================== */
 
-app.use(
-    cors({
-        origin: true,
-        credentials: true
-    })
-);
-
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
 
 /* ======================================================
    SOCKET.IO
 ====================================================== */
 
-const io = new Server(
-    server,
-    {
-        cors: {
-            origin: true,
-            credentials: true,
-            methods: [
-                'GET',
-                'POST'
-            ]
-        }
+const io = new Server(server, {
+    cors: {
+        origin: true,
+        credentials: true,
+        methods: ['GET', 'POST']
     }
-);
-
+});
 
 /* ======================================================
    BODY
 ====================================================== */
 
-app.use(
-    express.json({
-        limit: '10mb'
-    })
-);
+app.use(express.json({
+    limit: '10mb'
+}));
 
-app.use(
-    express.urlencoded({
-        limit: '10mb',
-        extended: true
-    })
-);
-
+app.use(express.urlencoded({
+    limit: '10mb',
+    extended: true
+}));
 
 /* ======================================================
-   BANCO
+   BANCO DE DADOS
 ====================================================== */
 
 const db = new sqlite3.Database(
-    './database.db',
+    path.join(__dirname, 'database.db'),
     err => {
-
         if (err) {
-
-            console.error(
-                'Erro ao abrir banco:',
-                err
-            );
-
-            return;
+            console.error('Erro ao abrir banco:', err);
+        } else {
+            console.log('Banco SQLite conectado.');
         }
-
-        console.log(
-            'Banco de dados conectado.'
-        );
-
     }
 );
 
+/*
+   IMPORTANTE:
+   SQL escrito como strings normais.
+   Assim evitamos problemas de crase/template string
+   durante o deploy no Render.
+*/
+
+db.serialize(() => {
+
+    db.run(
+        "CREATE TABLE IF NOT EXISTS users (" +
+        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+        "username TEXT UNIQUE," +
+        "password TEXT," +
+        "avatar TEXT DEFAULT ''" +
+        ")",
+        err => {
+            if (err) {
+                console.error('Erro tabela users:', err);
+            }
+        }
+    );
+
+    db.run(
+        "CREATE TABLE IF NOT EXISTS friendships (" +
+        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+        "user1 TEXT," +
+        "user2 TEXT," +
+        "status TEXT" +
+        ")",
+        err => {
+            if (err) {
+                console.error('Erro tabela friendships:', err);
+            }
+        }
+    );
+
+    db.run(
+        "CREATE TABLE IF NOT EXISTS private_messages (" +
+        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+        "sender TEXT," +
+        "receiver TEXT," +
+        "message TEXT" +
+        ")",
+        err => {
+            if (err) {
+                console.error('Erro tabela private_messages:', err);
+            }
+        }
+    );
+
+});
 
 /* ======================================================
    SESSÕES
@@ -92,502 +118,333 @@ const db = new sqlite3.Database(
 
 const sessions = new Map();
 
-
 function createSession(username) {
 
-    const token =
-        crypto.randomBytes(32).toString('hex');
+    const token = crypto
+        .randomBytes(32)
+        .toString('hex');
 
-    sessions.set(
-        token,
-        {
-            username,
-            createdAt: Date.now()
-        }
-    );
+    sessions.set(token, {
+        username: username,
+        createdAt: Date.now()
+    });
 
     return token;
 }
 
-
 function getSession(req) {
 
-    const cookies =
-        req.headers.cookie;
+    const cookies = req.headers.cookie;
 
     if (!cookies) {
         return null;
     }
 
-    const match =
-        cookies.match(
-            /(?:^|;\s*)chat_session=([^;]+)/
-        );
+    const match = cookies.match(
+        /chat_session=([^;]+)/
+    );
 
     if (!match) {
         return null;
     }
 
-    return (
-        sessions.get(match[1]) ||
-        null
-    );
+    return sessions.get(match[1]) || null;
 }
 
+function requireLogin(req, res, next) {
 
-function requireLogin(
-    req,
-    res,
-    next
-) {
-
-    const session =
-        getSession(req);
+    const session = getSession(req);
 
     if (!session) {
-
-        return res
-            .status(401)
-            .json({
-                success: false,
-                loggedIn: false,
-                message:
-                    'Não autenticado.'
-            });
+        return res.status(401).json({
+            success: false,
+            loggedIn: false,
+            message: 'Não autenticado.'
+        });
     }
 
-    req.username =
-        session.username;
+    req.username = session.username;
 
     next();
 }
-
-
-/* ======================================================
-   BANCO DE DADOS
-====================================================== */
-
-db.serialize(() => {
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            avatar TEXT DEFAULT ''
-        )
-    `);
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS friendships (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user1 TEXT NOT NULL,
-            user2 TEXT NOT NULL,
-            status TEXT NOT NULL
-        )
-    `);
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS private_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sender TEXT NOT NULL,
-            receiver TEXT NOT NULL,
-            message TEXT NOT NULL
-        )
-    `);
-
-});
-
 
 /* ======================================================
    STATUS
 ====================================================== */
 
-app.get(
-    '/api/status',
-    (req, res) => {
+app.get('/api/status', (req, res) => {
 
-        res.json({
-            online: true,
-            server: 'Meu Discord',
-            time:
-                new Date().toISOString()
-        });
+    res.json({
+        online: true,
+        server: 'Meu Discord',
+        time: new Date().toISOString()
+    });
 
-    }
-);
-
+});
 
 /* ======================================================
-   LOGIN PAGE
+   LOGIN.HTML
 ====================================================== */
 
-app.get(
-    '/login.html',
-    (req, res) => {
+app.get('/login.html', (req, res) => {
 
-        const session =
-            getSession(req);
+    const session = getSession(req);
 
-        if (session) {
-
-            return res.redirect('/');
-        }
-
-        res.sendFile(
-            __dirname + '/login.html'
-        );
-
+    if (session) {
+        return res.redirect('/');
     }
-);
 
+    res.sendFile(
+        path.join(__dirname, 'login.html')
+    );
+
+});
 
 /* ======================================================
    CADASTRO
 ====================================================== */
 
-app.post(
-    '/register',
-    async (req, res) => {
+app.post('/register', async (req, res) => {
 
-        const username =
-            String(
-                req.body.username || ''
-            ).trim();
+    const username = String(
+        req.body.username || ''
+    ).trim();
 
-        const password =
-            String(
-                req.body.password || ''
-            );
+    const password = String(
+        req.body.password || ''
+    );
 
+    if (!username || !password) {
+        return res.status(400).send(
+            'Preencha todos os campos.'
+        );
+    }
 
-        if (!username || !password) {
+    if (username.length < 3) {
+        return res.status(400).send(
+            'O usuário precisa ter pelo menos 3 caracteres.'
+        );
+    }
 
-            return res
-                .status(400)
-                .send(
-                    'Preencha todos os campos.'
-                );
-        }
+    if (password.length < 4) {
+        return res.status(400).send(
+            'A senha precisa ter pelo menos 4 caracteres.'
+        );
+    }
 
+    try {
 
-        if (username.length < 3) {
+        const hashedPassword = await bcrypt.hash(
+            password,
+            10
+        );
 
-            return res
-                .status(400)
-                .send(
-                    'O usuário precisa ter pelo menos 3 caracteres.'
-                );
-        }
+        db.run(
+            "INSERT INTO users (username, password, avatar) VALUES (?, ?, '')",
+            [
+                username,
+                hashedPassword
+            ],
+            function(err) {
 
+                if (err) {
 
-        if (password.length < 4) {
-
-            return res
-                .status(400)
-                .send(
-                    'A senha precisa ter pelo menos 4 caracteres.'
-                );
-        }
-
-
-        try {
-
-            const hashedPassword =
-                await bcrypt.hash(
-                    password,
-                    10
-                );
-
-
-            db.run(
-                `
-                INSERT INTO users
-                (username, password, avatar)
-                VALUES (?, ?, '')
-                `,
-                [
-                    username,
-                    hashedPassword
-                ],
-                function(err) {
-
-                    if (err) {
-
-                        if (
-                            err.message &&
-                            err.message.includes(
-                                'UNIQUE'
-                            )
-                        ) {
-
-                            return res
-                                .status(400)
-                                .send(
-                                    'Usuário já existe!'
-                                );
-                        }
-
-
-                        console.error(
-                            'Erro ao criar usuário:',
-                            err
+                    if (
+                        err.message &&
+                        err.message.includes('UNIQUE')
+                    ) {
+                        return res.status(400).send(
+                            'Usuário já existe!'
                         );
-
-                        return res
-                            .status(500)
-                            .send(
-                                'Erro ao criar conta.'
-                            );
                     }
 
-
-                    res.send(
-                        'Conta criada com sucesso!'
+                    console.error(
+                        'Erro cadastro:',
+                        err
                     );
 
+                    return res.status(500).send(
+                        'Erro ao criar conta.'
+                    );
                 }
-            );
 
-        } catch (error) {
-
-            console.error(
-                'Erro no cadastro:',
-                error
-            );
-
-            res
-                .status(500)
-                .send(
-                    'Erro no servidor.'
+                res.send(
+                    'Conta criada com sucesso!'
                 );
-        }
 
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            'Erro cadastro:',
+            error
+        );
+
+        res.status(500).send(
+            'Erro no servidor.'
+        );
     }
-);
 
+});
 
 /* ======================================================
    LOGIN
 ====================================================== */
 
-app.post(
-    '/login',
-    (req, res) => {
+app.post('/login', (req, res) => {
 
-        const username =
-            String(
-                req.body.username || ''
-            ).trim();
+    const username = String(
+        req.body.username || ''
+    ).trim();
 
-        const password =
-            String(
-                req.body.password || ''
-            );
+    const password = String(
+        req.body.password || ''
+    );
 
-
-        if (!username || !password) {
-
-            return res
-                .status(400)
-                .send(
-                    'Preencha usuário e senha.'
-                );
-        }
-
-
-        db.get(
-            `
-            SELECT *
-            FROM users
-            WHERE username = ?
-            `,
-            [
-                username
-            ],
-            async (
-                err,
-                user
-            ) => {
-
-                if (err) {
-
-                    console.error(
-                        'Erro no login:',
-                        err
-                    );
-
-                    return res
-                        .status(500)
-                        .send(
-                            'Erro no servidor.'
-                        );
-                }
-
-
-                if (!user) {
-
-                    return res
-                        .status(401)
-                        .send(
-                            'Usuário ou senha incorretos!'
-                        );
-                }
-
-
-                try {
-
-                    const correct =
-                        await bcrypt.compare(
-                            password,
-                            user.password
-                        );
-
-
-                    if (!correct) {
-
-                        return res
-                            .status(401)
-                            .send(
-                                'Usuário ou senha incorretos!'
-                            );
-                    }
-
-
-                    const token =
-                        createSession(
-                            user.username
-                        );
-
-
-                    res.setHeader(
-                        'Set-Cookie',
-                        `chat_session=${token}; HttpOnly; Path=/; SameSite=None; Secure`
-                    );
-
-
-                    res.json({
-                        success: true,
-                        username:
-                            user.username
-                    });
-
-                } catch (error) {
-
-                    console.error(
-                        'Erro ao verificar senha:',
-                        error
-                    );
-
-                    res
-                        .status(500)
-                        .send(
-                            'Erro no servidor.'
-                        );
-                }
-
-            }
+    if (!username || !password) {
+        return res.status(400).send(
+            'Preencha usuário e senha.'
         );
-
     }
-);
 
+    db.get(
+        "SELECT * FROM users WHERE username = ?",
+        [username],
+        async (err, user) => {
+
+            if (err) {
+
+                console.error(
+                    'Erro login:',
+                    err
+                );
+
+                return res.status(500).send(
+                    'Erro no servidor.'
+                );
+            }
+
+            if (!user) {
+                return res.status(401).send(
+                    'Usuário ou senha incorretos!'
+                );
+            }
+
+            try {
+
+                const correct =
+                    await bcrypt.compare(
+                        password,
+                        user.password
+                    );
+
+                if (!correct) {
+                    return res.status(401).send(
+                        'Usuário ou senha incorretos!'
+                    );
+                }
+
+                const token =
+                    createSession(
+                        user.username
+                    );
+
+                res.setHeader(
+                    'Set-Cookie',
+                    'chat_session=' +
+                    token +
+                    '; HttpOnly; Path=/; SameSite=None; Secure'
+                );
+
+                res.json({
+                    success: true,
+                    username: user.username
+                });
+
+            } catch (error) {
+
+                console.error(
+                    'Erro senha:',
+                    error
+                );
+
+                res.status(500).send(
+                    'Erro no servidor.'
+                );
+            }
+
+        }
+    );
+
+});
 
 /* ======================================================
    ME
 ====================================================== */
 
-app.get(
-    '/me',
-    (req, res) => {
+app.get('/me', (req, res) => {
 
-        const session =
-            getSession(req);
+    const session = getSession(req);
 
+    if (!session) {
 
-        if (!session) {
-
-            return res
-                .status(401)
-                .json({
-                    loggedIn: false
-                });
-        }
-
-
-        res.json({
-            loggedIn: true,
-            username:
-                session.username
+        return res.status(401).json({
+            loggedIn: false
         });
 
     }
-);
 
+    res.json({
+        loggedIn: true,
+        username: session.username
+    });
+
+});
 
 /* ======================================================
    LOGOUT
 ====================================================== */
 
-app.post(
-    '/logout',
-    (req, res) => {
+app.post('/logout', (req, res) => {
 
-        const session =
-            getSession(req);
+    const cookies = req.headers.cookie;
 
-        if (session) {
+    if (cookies) {
 
-            const cookies =
-                req.headers.cookie;
-
-            const match =
-                cookies &&
-                cookies.match(
-                    /(?:^|;\s*)chat_session=([^;]+)/
-                );
-
-            if (match) {
-
-                sessions.delete(
-                    match[1]
-                );
-
-            }
-
-        }
-
-
-        res.setHeader(
-            'Set-Cookie',
-            'chat_session=; HttpOnly; Path=/; Max-Age=0; SameSite=None; Secure'
+        const match = cookies.match(
+            /chat_session=([^;]+)/
         );
 
-
-        res.json({
-            success: true
-        });
+        if (match) {
+            sessions.delete(match[1]);
+        }
 
     }
-);
 
+    res.setHeader(
+        'Set-Cookie',
+        'chat_session=; HttpOnly; Path=/; Max-Age=0; SameSite=None; Secure'
+    );
+
+    res.json({
+        success: true
+    });
+
+});
 
 /* ======================================================
    PÁGINA PRINCIPAL
 ====================================================== */
 
-app.get(
-    '/',
-    requireLogin,
-    (req, res) => {
+app.get('/', requireLogin, (req, res) => {
 
-        res.sendFile(
-            __dirname + '/index.html'
-        );
+    res.sendFile(
+        path.join(__dirname, 'index.html')
+    );
 
-    }
-);
-
+});
 
 /* ======================================================
    ARQUIVOS ESTÁTICOS
@@ -596,24 +453,23 @@ app.get(
 app.use(
     '/css',
     express.static(
-        __dirname + '/css'
+        path.join(__dirname, 'css')
     )
 );
 
 app.use(
     '/js',
     express.static(
-        __dirname + '/js'
+        path.join(__dirname, 'js')
     )
 );
 
 app.use(
     '/assets',
     express.static(
-        __dirname + '/assets'
+        path.join(__dirname, 'assets')
     )
 );
-
 
 /* ======================================================
    AVATAR
@@ -624,19 +480,13 @@ app.post(
     requireLogin,
     (req, res) => {
 
-        const username =
-            req.username;
+        const username = req.username;
 
         const avatar =
             req.body.avatar || '';
 
-
         db.run(
-            `
-            UPDATE users
-            SET avatar = ?
-            WHERE username = ?
-            `,
+            "UPDATE users SET avatar = ? WHERE username = ?",
             [
                 avatar,
                 username
@@ -645,18 +495,12 @@ app.post(
 
                 if (err) {
 
-                    console.error(
-                        'Erro avatar:',
-                        err
+                    console.error(err);
+
+                    return res.status(500).send(
+                        'Erro ao atualizar avatar.'
                     );
-
-                    return res
-                        .status(500)
-                        .send(
-                            'Erro ao atualizar avatar.'
-                        );
                 }
-
 
                 res.send(
                     'Avatar atualizado com sucesso!'
@@ -667,7 +511,6 @@ app.post(
 
     }
 );
-
 
 /* ======================================================
    USUÁRIO
@@ -681,32 +524,19 @@ app.get(
         const username =
             req.params.username;
 
-
         db.get(
-            `
-            SELECT username, avatar
-            FROM users
-            WHERE username = ?
-            `,
-            [
-                username
-            ],
-            (
-                err,
-                user
-            ) => {
+            "SELECT username, avatar FROM users WHERE username = ?",
+            [username],
+            (err, user) => {
 
-                if (
-                    err ||
-                    !user
-                ) {
+                if (err || !user) {
 
                     return res.json({
-                        username,
+                        username: username,
                         avatar: ''
                     });
-                }
 
+                }
 
                 res.json(user);
 
@@ -715,7 +545,6 @@ app.get(
 
     }
 );
-
 
 /* ======================================================
    AMIGOS
@@ -729,125 +558,90 @@ app.get(
         const username =
             req.params.username;
 
+        if (username !== req.username) {
 
-        if (
-            username !== req.username
-        ) {
+            return res.status(403).json({
+                error: 'Acesso negado.'
+            });
 
-            return res
-                .status(403)
-                .json({
-                    error:
-                        'Acesso negado.'
-                });
         }
 
-
         db.all(
-            `
-            SELECT *
-            FROM friendships
-            WHERE user1 = ?
-            OR user2 = ?
-            `,
+            "SELECT * FROM friendships WHERE user1 = ? OR user2 = ?",
             [
                 username,
                 username
             ],
-            (
-                err,
-                rows
-            ) => {
+            (err, rows) => {
 
                 if (err) {
 
-                    return res
-                        .status(500)
-                        .send(
-                            'Erro ao buscar amigos'
-                        );
-                }
+                    return res.status(500).send(
+                        'Erro ao buscar amigos'
+                    );
 
+                }
 
                 const friends = [];
                 const pending = [];
 
+                rows.forEach(row => {
 
-                rows.forEach(
-                    row => {
+                    if (
+                        row.status ===
+                        'accepted'
+                    ) {
 
-                        if (
-                            row.status ===
-                            'accepted'
-                        ) {
-
-                            friends.push(
-                                row.user1 === username
-                                    ? row.user2
-                                    : row.user1
-                            );
-
-                        }
-
-
-                        if (
-                            row.status === 'pending' &&
-                            row.user2 === username
-                        ) {
-
-                            pending.push(
-                                row.user1
-                            );
-
-                        }
-
-                    }
-                );
-
-
-                const details =
-                    (
-                        names,
-                        callback
-                    ) => {
-
-                        if (
-                            names.length === 0
-                        ) {
-
-                            return callback([]);
-                        }
-
-
-                        const placeholders =
-                            names
-                                .map(
-                                    () => '?'
-                                )
-                                .join(',');
-
-
-                        db.all(
-                            `
-                            SELECT username, avatar
-                            FROM users
-                            WHERE username IN (${placeholders})
-                            `,
-                            names,
-                            (
-                                err,
-                                result
-                            ) => {
-
-                                callback(
-                                    result || []
-                                );
-
-                            }
+                        friends.push(
+                            row.user1 === username
+                                ? row.user2
+                                : row.user1
                         );
 
-                    };
+                    }
 
+                    if (
+                        row.status === 'pending' &&
+                        row.user2 === username
+                    ) {
+
+                        pending.push(
+                            row.user1
+                        );
+
+                    }
+
+                });
+
+                const details = (
+                    names,
+                    callback
+                ) => {
+
+                    if (names.length === 0) {
+                        return callback([]);
+                    }
+
+                    const placeholders =
+                        names.map(
+                            () => '?'
+                        ).join(',');
+
+                    db.all(
+                        "SELECT username, avatar FROM users WHERE username IN (" +
+                        placeholders +
+                        ")",
+                        names,
+                        (err, result) => {
+
+                            callback(
+                                result || []
+                            );
+
+                        }
+                    );
+
+                };
 
                 details(
                     friends,
@@ -876,7 +670,6 @@ app.get(
     }
 );
 
-
 /* ======================================================
    ADICIONAR AMIGO
 ====================================================== */
@@ -894,92 +687,62 @@ app.post(
                 req.body.friendName || ''
             ).trim();
 
-
         if (!friendName) {
 
-            return res
-                .status(400)
-                .send(
-                    'Digite um usuário.'
-                );
+            return res.status(400).send(
+                'Digite um usuário.'
+            );
+
         }
 
+        if (username === friendName) {
 
-        if (
-            username === friendName
-        ) {
+            return res.status(400).send(
+                'Você não pode se adicionar.'
+            );
 
-            return res
-                .status(400)
-                .send(
-                    'Você não pode se adicionar.'
-                );
         }
-
 
         db.get(
-            `
-            SELECT *
-            FROM users
-            WHERE username = ?
-            `,
-            [
-                friendName
-            ],
-            (
-                err,
-                user
-            ) => {
+            "SELECT * FROM users WHERE username = ?",
+            [friendName],
+            (err, user) => {
 
                 if (err) {
 
-                    return res
-                        .status(500)
-                        .send(
-                            'Erro no servidor.'
-                        );
-                }
+                    return res.status(500).send(
+                        'Erro no servidor.'
+                    );
 
+                }
 
                 if (!user) {
 
-                    return res
-                        .status(404)
-                        .send(
-                            'Usuário não encontrado!'
-                        );
+                    return res.status(404).send(
+                        'Usuário não encontrado!'
+                    );
+
                 }
 
-
                 db.get(
-                    `
-                    SELECT *
-                    FROM friendships
-                    WHERE
-                    (user1 = ? AND user2 = ?)
-                    OR
-                    (user1 = ? AND user2 = ?)
-                    `,
+                    "SELECT * FROM friendships WHERE " +
+                    "(user1 = ? AND user2 = ?) OR " +
+                    "(user1 = ? AND user2 = ?)",
                     [
                         username,
                         friendName,
                         friendName,
                         username
                     ],
-                    (
-                        err,
-                        existing
-                    ) => {
+                    (err, existing) => {
 
                         if (err) {
 
-                            return res
-                                .status(500)
-                                .send(
-                                    'Erro no servidor.'
-                                );
-                        }
+                            return res.status(500).send(
+                                'Erro no servidor.'
+                            );
 
+                        }
 
                         if (existing) {
 
@@ -988,28 +751,20 @@ app.post(
                                 'accepted'
                             ) {
 
-                                return res
-                                    .status(400)
-                                    .send(
-                                        'Vocês já são amigos.'
-                                    );
+                                return res.status(400).send(
+                                    'Vocês já são amigos.'
+                                );
+
                             }
 
+                            return res.status(400).send(
+                                'Já existe um pedido pendente entre vocês.'
+                            );
 
-                            return res
-                                .status(400)
-                                .send(
-                                    'Já existe um pedido pendente entre vocês.'
-                                );
                         }
 
-
                         db.run(
-                            `
-                            INSERT INTO friendships
-                            (user1, user2, status)
-                            VALUES (?, ?, 'pending')
-                            `,
+                            "INSERT INTO friendships (user1, user2, status) VALUES (?, ?, 'pending')",
                             [
                                 username,
                                 friendName
@@ -1018,24 +773,19 @@ app.post(
 
                                 if (err) {
 
-                                    console.error(
-                                        err
+                                    console.error(err);
+
+                                    return res.status(500).send(
+                                        'Erro ao enviar pedido.'
                                     );
 
-                                    return res
-                                        .status(500)
-                                        .send(
-                                            'Erro ao enviar pedido.'
-                                        );
                                 }
-
 
                                 io.to(
                                     friendName
                                 ).emit(
                                     'refresh friends'
                                 );
-
 
                                 res.send(
                                     'Pedido de amizade enviado!'
@@ -1052,7 +802,6 @@ app.post(
 
     }
 );
-
 
 /* ======================================================
    ACEITAR AMIGO
@@ -1071,16 +820,10 @@ app.post(
                 req.body.friendName || ''
             ).trim();
 
-
         db.run(
-            `
-            UPDATE friendships
-            SET status = 'accepted'
-            WHERE
-            user1 = ?
-            AND user2 = ?
-            AND status = 'pending'
-            `,
+            "UPDATE friendships " +
+            "SET status = 'accepted' " +
+            "WHERE user1 = ? AND user2 = ? AND status = 'pending'",
             [
                 friendName,
                 username
@@ -1089,25 +832,19 @@ app.post(
 
                 if (err) {
 
-                    return res
-                        .status(500)
-                        .send(
-                            'Erro ao aceitar pedido.'
-                        );
+                    return res.status(500).send(
+                        'Erro ao aceitar pedido.'
+                    );
+
                 }
 
+                if (this.changes === 0) {
 
-                if (
-                    this.changes === 0
-                ) {
+                    return res.status(400).send(
+                        'Pedido não encontrado.'
+                    );
 
-                    return res
-                        .status(400)
-                        .send(
-                            'Pedido não encontrado.'
-                        );
                 }
-
 
                 io.to(
                     friendName
@@ -1115,13 +852,11 @@ app.post(
                     'refresh friends'
                 );
 
-
                 io.to(
                     username
                 ).emit(
                     'refresh friends'
                 );
-
 
                 res.send(
                     'Pedido aceito!'
@@ -1132,7 +867,6 @@ app.post(
 
     }
 );
-
 
 /* ======================================================
    REMOVER AMIGO
@@ -1151,15 +885,10 @@ app.post(
                 req.body.friendName || ''
             ).trim();
 
-
         db.run(
-            `
-            DELETE FROM friendships
-            WHERE
-            (user1 = ? AND user2 = ?)
-            OR
-            (user1 = ? AND user2 = ?)
-            `,
+            "DELETE FROM friendships WHERE " +
+            "(user1 = ? AND user2 = ?) OR " +
+            "(user1 = ? AND user2 = ?)",
             [
                 username,
                 friendName,
@@ -1170,20 +899,17 @@ app.post(
 
                 if (err) {
 
-                    return res
-                        .status(500)
-                        .send(
-                            'Erro ao remover amizade.'
-                        );
-                }
+                    return res.status(500).send(
+                        'Erro ao remover amizade.'
+                    );
 
+                }
 
                 io.to(
                     friendName
                 ).emit(
                     'refresh friends'
                 );
-
 
                 res.send(
                     'Amizade removida.'
@@ -1195,13 +921,11 @@ app.post(
     }
 );
 
-
 /* ======================================================
    SOCKET.IO
 ====================================================== */
 
 const activeUsers = {};
-
 
 io.on(
     'connection',
@@ -1209,7 +933,6 @@ io.on(
 
         socket.callRoom = null;
         socket.username = null;
-
 
         /* ================================================
            REGISTRAR USUÁRIO
@@ -1223,20 +946,16 @@ io.on(
                     return;
                 }
 
-
                 activeUsers[
                     socket.id
                 ] = username;
 
-
                 socket.username =
                     username;
-
 
                 socket.join(
                     username
                 );
-
 
                 console.log(
                     'Socket conectado:',
@@ -1245,7 +964,6 @@ io.on(
 
             }
         );
-
 
         /* ================================================
            ATUALIZAR AMIGOS
@@ -1259,7 +977,6 @@ io.on(
                     return;
                 }
 
-
                 io.to(
                     targetUser
                 ).emit(
@@ -1269,7 +986,6 @@ io.on(
             }
         );
 
-
         /* ================================================
            FECHAR CHAT
         ================================================ */
@@ -1278,27 +994,22 @@ io.on(
             'force close chat',
             data => {
 
-                if (!data) {
+                if (
+                    !data ||
+                    !data.targetUser
+                ) {
                     return;
                 }
 
-
-                if (
+                io.to(
                     data.targetUser
-                ) {
-
-                    io.to(
-                        data.targetUser
-                    ).emit(
-                        'close chat with',
-                        data.currentUser
-                    );
-
-                }
+                ).emit(
+                    'close chat with',
+                    data.currentUser
+                );
 
             }
         );
-
 
         /* ================================================
            ENTRAR NA SALA
@@ -1312,119 +1023,101 @@ io.on(
                     return;
                 }
 
+                [...socket.rooms].forEach(
+                    r => {
 
-                [...socket.rooms]
-                    .forEach(
-                        r => {
+                        if (
+                            r !== socket.id &&
+                            r !== socket.username
+                        ) {
 
-                            if (
-                                r !== socket.id &&
-                                r !== socket.username
-                            ) {
-
-                                socket.leave(r);
-
-                            }
+                            socket.leave(r);
 
                         }
-                    );
 
+                    }
+                );
 
                 socket.join(room);
-
 
                 const parts =
                     room.includes('_')
                         ? room.split('_')
                         : room.split('-');
 
-
-                if (
-                    parts.length < 2
-                ) {
-
+                if (parts.length < 2) {
                     return;
                 }
 
-
                 db.all(
-                    `
-                    SELECT *
-                    FROM private_messages
-                    WHERE
-                    (sender = ? AND receiver = ?)
-                    OR
-                    (sender = ? AND receiver = ?)
-                    ORDER BY id ASC
-                    `,
+                    "SELECT * FROM private_messages WHERE " +
+                    "(sender = ? AND receiver = ?) OR " +
+                    "(sender = ? AND receiver = ?) " +
+                    "ORDER BY id ASC",
                     [
                         parts[0],
                         parts[1],
                         parts[1],
                         parts[0]
                     ],
-                    async (
-                        err,
-                        rows
-                    ) => {
+                    (err, rows) => {
 
                         if (
                             err ||
                             !rows
                         ) {
-
                             return;
                         }
 
-
                         const messages = [];
+                        let pending = rows.length;
 
+                        if (pending === 0) {
 
-                        for (
-                            const msg of rows
-                        ) {
-
-                            await new Promise(
-                                resolve => {
-
-                                    db.get(
-                                        `
-                                        SELECT avatar
-                                        FROM users
-                                        WHERE username = ?
-                                        `,
-                                        [
-                                            msg.sender
-                                        ],
-                                        (
-                                            err,
-                                            user
-                                        ) => {
-
-                                            messages.push({
-                                                ...msg,
-                                                avatar:
-                                                    user
-                                                        ? user.avatar
-                                                        : ''
-                                            });
-
-
-                                            resolve();
-
-                                        }
-                                    );
-
-                                }
+                            return socket.emit(
+                                'load private history',
+                                []
                             );
 
                         }
 
+                        rows.forEach(msg => {
 
-                        socket.emit(
-                            'load private history',
-                            messages
-                        );
+                            db.get(
+                                "SELECT avatar FROM users WHERE username = ?",
+                                [msg.sender],
+                                (err, user) => {
+
+                                    messages.push({
+                                        ...msg,
+                                        avatar:
+                                            user
+                                                ? user.avatar
+                                                : ''
+                                    });
+
+                                    pending--;
+
+                                    if (
+                                        pending === 0
+                                    ) {
+
+                                        messages.sort(
+                                            (a, b) =>
+                                                a.id - b.id
+                                        );
+
+                                        socket.emit(
+                                            'load private history',
+                                            messages
+                                        );
+
+                                    }
+
+                                }
+                            );
+
+                        });
 
                     }
                 );
@@ -1432,9 +1125,8 @@ io.on(
             }
         );
 
-
         /* ================================================
-           MENSAGEM
+           MENSAGEM PRIVADA
         ================================================ */
 
         socket.on(
@@ -1445,53 +1137,37 @@ io.on(
                     return;
                 }
 
-
                 if (
                     !data.sender ||
                     !data.receiver ||
                     !data.message ||
                     !data.room
                 ) {
-
                     return;
                 }
-
 
                 if (
                     socket.username &&
-                    data.sender !== socket.username
+                    data.sender !==
+                    socket.username
                 ) {
-
                     return;
                 }
 
-
                 db.get(
-                    `
-                    SELECT avatar
-                    FROM users
-                    WHERE username = ?
-                    `,
-                    [
-                        data.sender
-                    ],
-                    (
-                        err,
-                        user
-                    ) => {
+                    "SELECT avatar FROM users WHERE username = ?",
+                    [data.sender],
+                    (err, user) => {
 
                         const avatar =
                             user
                                 ? user.avatar
                                 : '';
 
-
                         db.run(
-                            `
-                            INSERT INTO private_messages
-                            (sender, receiver, message)
-                            VALUES (?, ?, ?)
-                            `,
+                            "INSERT INTO private_messages " +
+                            "(sender, receiver, message) " +
+                            "VALUES (?, ?, ?)",
                             [
                                 data.sender,
                                 data.receiver,
@@ -1508,12 +1184,10 @@ io.on(
                                     return;
                                 }
 
-
                                 const message = {
                                     ...data,
                                     avatar
                                 };
-
 
                                 io.to(
                                     data.room
@@ -1521,7 +1195,6 @@ io.on(
                                     'private message',
                                     message
                                 );
-
 
                                 const sockets =
                                     io
@@ -1531,7 +1204,6 @@ io.on(
                                         .get(
                                             data.receiver
                                         );
-
 
                                 if (sockets) {
 
@@ -1548,12 +1220,13 @@ io.on(
                                                     socketId
                                                 );
 
-
                                         if (
                                             receiver &&
-                                            !receiver.rooms.has(
-                                                data.room
-                                            )
+                                            !receiver
+                                                .rooms
+                                                .has(
+                                                    data.room
+                                                )
                                         ) {
 
                                             receiver.emit(
@@ -1576,7 +1249,6 @@ io.on(
             }
         );
 
-
         /* ================================================
            CHAMADA
         ================================================ */
@@ -1592,10 +1264,8 @@ io.on(
                     return;
                 }
 
-
                 socket.callRoom =
                     data.room;
-
 
                 socket.to(
                     data.room
@@ -1606,7 +1276,6 @@ io.on(
 
             }
         );
-
 
         socket.on(
             'call-answer',
@@ -1619,10 +1288,8 @@ io.on(
                     return;
                 }
 
-
                 socket.callRoom =
                     data.room;
-
 
                 socket.to(
                     data.room
@@ -1633,7 +1300,6 @@ io.on(
 
             }
         );
-
 
         /* ================================================
            RENEGOCIAÇÃO
@@ -1650,10 +1316,8 @@ io.on(
                     return;
                 }
 
-
                 socket.callRoom =
                     data.room;
-
 
                 socket.to(
                     data.room
@@ -1664,7 +1328,6 @@ io.on(
 
             }
         );
-
 
         socket.on(
             'renegotiation-answer',
@@ -1677,10 +1340,8 @@ io.on(
                     return;
                 }
 
-
                 socket.callRoom =
                     data.room;
-
 
                 socket.to(
                     data.room
@@ -1691,7 +1352,6 @@ io.on(
 
             }
         );
-
 
         /* ================================================
            ICE
@@ -1708,7 +1368,6 @@ io.on(
                     return;
                 }
 
-
                 socket.to(
                     data.room
                 ).emit(
@@ -1718,7 +1377,6 @@ io.on(
 
             }
         );
-
 
         /* ================================================
            DESLIGAR
@@ -1735,7 +1393,6 @@ io.on(
                     return;
                 }
 
-
                 if (
                     socket.callRoom ===
                     data.room
@@ -1746,7 +1403,6 @@ io.on(
 
                 }
 
-
                 socket.to(
                     data.room
                 ).emit(
@@ -1755,7 +1411,6 @@ io.on(
 
             }
         );
-
 
         /* ================================================
            TELA PAROU
@@ -1772,7 +1427,6 @@ io.on(
                     return;
                 }
 
-
                 socket.to(
                     data.room
                 ).emit(
@@ -1782,9 +1436,8 @@ io.on(
             }
         );
 
-
         /* ================================================
-           DESCONECTAR
+           DESCONEXÃO
         ================================================ */
 
         socket.on(
@@ -1795,7 +1448,6 @@ io.on(
                     activeUsers[
                         socket.id
                     ];
-
 
                 if (
                     socket.callRoom
@@ -1809,11 +1461,9 @@ io.on(
 
                 }
 
-
                 delete activeUsers[
                     socket.id
                 ];
-
 
                 console.log(
                     'Socket desconectado:',
@@ -1827,32 +1477,33 @@ io.on(
     }
 );
 
-
 /* ======================================================
-   ERROS
+   ERROS DO SERVIDOR
 ====================================================== */
 
-app.use(
-    (err, req, res, next) => {
+process.on(
+    'uncaughtException',
+    error => {
 
         console.error(
-            'Erro interno:',
-            err
+            'UNCAUGHT EXCEPTION:',
+            error
         );
-
-        if (res.headersSent) {
-            return next(err);
-        }
-
-        res
-            .status(500)
-            .send(
-                'Erro interno do servidor.'
-            );
 
     }
 );
 
+process.on(
+    'unhandledRejection',
+    error => {
+
+        console.error(
+            'UNHANDLED REJECTION:',
+            error
+        );
+
+    }
+);
 
 /* ======================================================
    SERVIDOR
@@ -1861,16 +1512,15 @@ app.use(
 const PORT =
     process.env.PORT || 3000;
 
-
 server.listen(
     PORT,
     '0.0.0.0',
     () => {
 
         console.log(
-            `Servidor rodando na porta ${PORT}`
+            'Servidor Meu Discord rodando na porta ' +
+            PORT
         );
 
     }
 );
-```
