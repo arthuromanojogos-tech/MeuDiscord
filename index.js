@@ -16,7 +16,6 @@ const server = http.createServer(app);
 ====================================================== */
 
 const PORT = process.env.PORT || 3000;
-
 const ROOT_DIR = __dirname;
 
 
@@ -89,6 +88,16 @@ app.use(
     express.static(
         path.join(ROOT_DIR, 'assets')
     )
+);
+
+/*
+   IMPORTANTE:
+   Permite que Express encontre index.html,
+   login.html e outros arquivos na raiz.
+*/
+
+app.use(
+    express.static(ROOT_DIR)
 );
 
 
@@ -658,19 +667,6 @@ app.post(
    PÁGINA PRINCIPAL
 ====================================================== */
 
-/*
-   IMPORTANTE:
-
-   O login.html manda o usuário para:
-
-       /index.html
-
-   Por isso precisamos ter esta rota.
-
-   Também mantemos / funcionando.
-*/
-
-
 app.get(
     '/',
     (req, res) => {
@@ -681,8 +677,11 @@ app.get(
 
         if (!session) {
 
-            return res.redirect(
-                '/login.html'
+            return res.sendFile(
+                path.join(
+                    ROOT_DIR,
+                    'login.html'
+                )
             );
 
         }
@@ -709,8 +708,11 @@ app.get(
 
         if (!session) {
 
-            return res.redirect(
-                '/login.html'
+            return res.sendFile(
+                path.join(
+                    ROOT_DIR,
+                    'login.html'
+                )
             );
 
         }
@@ -743,6 +745,30 @@ app.post(
             req.body.avatar || '';
 
 
+        if (!avatar) {
+
+            return res
+                .status(400)
+                .send(
+                    'Nenhuma imagem enviada.'
+                );
+
+        }
+
+
+        if (
+            typeof avatar !== 'string'
+        ) {
+
+            return res
+                .status(400)
+                .send(
+                    'Avatar inválido.'
+                );
+
+        }
+
+
         db.run(
             `
             UPDATE users
@@ -758,6 +784,7 @@ app.post(
                 if (error) {
 
                     console.error(
+                        'Erro avatar:',
                         error
                     );
 
@@ -771,9 +798,11 @@ app.post(
                 }
 
 
-                res.send(
-                    'Avatar atualizado com sucesso!'
-                );
+                res.json({
+                    success: true,
+                    message:
+                        'Avatar atualizado com sucesso!'
+                });
 
             }
         );
