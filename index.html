@@ -1752,133 +1752,64 @@ function openAvatarPicker() {
 }
     
 async function uploadAvatar(event) {
-
     const input = event.target;
+    const file = input.files?.[0];
 
-    const file =
-        input.files &&
-        input.files[0];
-
-    if (!file) {
-        return;
-    }
-    function openAvatarPicker() {
-
-    const input =
-        document.getElementById(
-            'avatar-file-input'
-        );
-
-    if (!input) {
-
-        alert(
-            'Seletor de foto não encontrado.'
-        );
-
-        return;
-    }
-
-    input.value = '';
-
-    input.click();
-
-}
+    if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-
         alert('Selecione uma imagem válida.');
-
         input.value = '';
-
         return;
     }
 
     if (file.size > 8 * 1024 * 1024) {
-
-        alert(
-            'A imagem é muito grande.\n\n' +
-            'Escolha uma imagem de até 8 MB.'
-        );
-
+        alert('Escolha uma imagem de até 8 MB.');
         input.value = '';
-
         return;
     }
 
     try {
-
         showToast('Processando foto...');
 
-        const reader = new FileReader();
+        const base64Image = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
 
-        const base64Image =
-            await new Promise(
-                (resolve, reject) => {
+            reader.onload = () => resolve(reader.result);
 
-                    reader.onload = () => {
-                        resolve(reader.result);
-                    };
+            reader.onerror = () =>
+                reject(new Error('Não foi possível ler a imagem.'));
 
-                    reader.onerror = () => {
-                        reject(
-                            new Error(
-                                'Não foi possível ler a imagem.'
-                            )
-                        );
-                    };
+            reader.readAsDataURL(file);
+        });
 
-                    reader.readAsDataURL(file);
+        const res = await fetch('/update-avatar', {
+            method: 'POST',
 
-                }
-            );
+            headers: {
+                'Content-Type': 'application/json'
+            },
 
-        const res =
-            await fetch(
-                '/update-avatar',
-                {
-                    method: 'POST',
+            credentials: 'include',
 
-                    headers: {
-                        'Content-Type':
-                            'application/json'
-                    },
-
-                    credentials: 'include',
-
-                    body: JSON.stringify({
-                        username: currentUser,
-                        avatar: base64Image
-                    })
-                }
-            );
+            body: JSON.stringify({
+                avatar: base64Image
+            })
+        });
 
         if (!res.ok) {
-
-            const errorText =
-                await res.text()
-                    .catch(() => '');
-
-            console.error(
-                'Erro ao atualizar avatar:',
-                errorText
-            );
-
+            const errorText = await res.text().catch(() => '');
             throw new Error(
-                errorText ||
-                'Erro ao enviar a foto.'
+                errorText || 'Erro ao enviar a foto.'
             );
         }
 
         await loadMyProfile();
-
         await loadFriends();
 
-        showToast(
-            'Foto de perfil alterada!'
-        );
+        showToast('Foto de perfil alterada!');
 
     } catch (error) {
-
         console.error(
             'Erro ao alterar foto:',
             error
@@ -1890,83 +1821,9 @@ async function uploadAvatar(event) {
         );
 
     } finally {
-
         input.value = '';
-
     }
-
 }
-
-    if (!file.type.startsWith('image/')) {
-        alert('Selecione uma imagem.');
-        input.value = '';
-        return;
-    }
-
-    try {
-
-        const formData = new FormData();
-
-        formData.append('avatar', file);
-
-        const response = await fetch('/upload-avatar', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error('Erro ao enviar a imagem.');
-        }
-
-        const data = await response.json();
-
-        if (data.avatar) {
-
-            // Atualiza a foto na tela
-            document.querySelectorAll(
-                '.profile-avatar, .avatar'
-            ).forEach(img => {
-
-                if (img.tagName === 'IMG') {
-                    img.src =
-                        data.avatar +
-                        '?t=' +
-                        Date.now();
-                }
-
-            });
-
-            showToast('Foto de perfil atualizada!');
-
-        } else {
-
-            throw new Error(
-                'O servidor não retornou a nova foto.'
-            );
-
-        }
-
-    } catch (error) {
-
-        console.error(
-            'Erro ao enviar avatar:',
-            error
-        );
-
-        alert(
-            'Não foi possível alterar a foto.\n\n' +
-            error.message
-        );
-
-    } finally {
-
-        // Permite selecionar a mesma foto novamente
-        input.value = '';
-
-    }
-
-}
-
 
 /* =====================================================
    LOGOUT
