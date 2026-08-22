@@ -7,60 +7,179 @@ const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+/*
+======================================================
+CONFIGURAÇÃO
+======================================================
+*/
 
-const db = new sqlite3.Database('./database.db');
+const PORT = process.env.PORT || 3000;
 
-// ======================================================
-// SESSÕES
-// ======================================================
+const FRONTEND_URL =
+    process.env.FRONTEND_URL ||
+    'https://meudiscord.onrender.com';
 
-const sessions = new Map();
+/*
+Origens permitidas.
 
-function createSession(username) {
-    const token = crypto.randomBytes(32).toString('hex');
+O Capacitor pode usar:
+- capacitor://localhost
+- http://localhost
+- https://localhost
 
-    sessions.set(token, {
-        username,
-        createdAt: Date.now()
-    });
+Dependendo de como o Android/iOS estiver configurado.
+*/
 
-    return token;
+const allowedOrigins = [
+    'https://meudiscord.onrender.com',
+    'capacitor://localhost',
+    'http://localhost',
+    'https://localhost',
+    'http://127.0.0.1',
+    'http://192.168.0.1',
+    'http://192.168.1.1'
+];
+
+/*
+======================================================
+CORS
+======================================================
+*/
+
+function checkOrigin(origin, callback) {
+
+    // Requisições sem Origin normalmente são permitidas.
+    if (!origin) {
+        return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+    }
+
+    /*
+    Durante desenvolvimento, permitir localhost
+    com qualquer porta.
+    */
+
+    if (
+        /^http:\/\/localhost(:\d+)?$/.test(origin) ||
+        /^https:\/\/localhost(:\d+)?$/.test(origin) ||
+        /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
+    ) {
+        return callback(null, true);
+    }
+
+    console.log('CORS bloqueou:', origin);
+
+    callback(new Error('Origem não permitida pelo CORS'));
 }
 
-function getSession(req) {
-    const cookies = req.headers.cookie;
+app.use((req, res, next) => {
 
-    if (!cookies) {
-        return null;
+    const origin = req.headers.origin;
+
+    if (origin) {
+
+        if (
+            allowedOrigins.includes(origin) ||
+            /^http:\/\/localhost(:\d+)?$/.test(origin) ||
+            /^https:\/\/localhost(:\d+)?$/.test(origin) ||
+            /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
+        ) {
+
+            res.header(
+                'Access-Control-Allow-Origin',
+                origin
+            );
+
+            res.header(
+                'Access-Control-Allow-Credentials',
+                'true'
+            );
+
+            res.header(
+                'Access-Control-Allow-Methods',
+                'GET,POST,PUT,DELETE,OPTIONS'
+            );
+
+            res.header(
+                'Access-Control-Allow-Headers',
+                'Content-Type, Authorization'
+            );
+        }
     }
 
-    const match = cookies.match(/chat_session=([^;]+)/);
+    if (req.method === 'OPTIONS') {
 
-    if (!match) {
-        return null;
+        return res.sendStatus(204);
     }
 
-    return sessions.get(match[1]) || null;
-}
-
-function requireLogin(req, res, next) {
-    const session = getSession(req);
-
-    if (!session) {
-        return res.redirect('/login.html');
-    }
-
-    req.username = session.username;
     next();
-}
+});
 
-// ======================================================
-// BANCO
-// ======================================================
+/*
+======================================================
+EXPRESS
+======================================================
+*/
+
+app.use(express.json({
+    limit: '10mb'
+}));
+
+app.use(express.urlencoded({
+    limit: '10mb',
+    extended: true
+}));
+
+/*
+======================================================
+SOCKET.IO
+======================================================
+*/
+
+const io = new Server(server, {
+
+    cors: {
+        origin: checkOrigin,
+        credentials: true,
+        methods: [
+            'GET',
+            'POST'
+        ]
+    },
+
+    transports: [
+        'websocket',
+        'polling'
+    ]
+});
+
+/*
+======================================================
+BANCO
+======================================================
+*/
+
+const db = new sqlite3.Database(
+    './database.db',
+    err => {
+
+        if (err) {
+            console.error(
+                'Erro ao abrir banco:',
+                err
+            );
+        } else {
+            console.log(
+                'Banco SQLite conectado.'
+            );
+        }
+
+    }
+);
 
 db.serialize(() => {
 
@@ -93,54 +212,145 @@ db.serialize(() => {
 
 });
 
-// ======================================================
-// LOGIN / CADASTRO
-// ======================================================
+/*
+======================================================
+SESSÕES
+======================================================
+*/
 
-// Página de login
+const sessions = new Map();
+
+function createSession(username) {
+
+    const token =
+        crypto.randomBytes(32).toString('hex');
+
+    sessions.set(token, {
+
+        username,
+
+        createdAt: Date.now()
+
+    });
+
+    return token;
+}
+
+function getSession(req) {
+
+    const cookies =
+        req.headers.cookie;
+
+    if (!cookies) {
+        return null;
+    }
+
+    const match =
+        cookies.match(
+            /(?:^|;\s*)chat_session=([^;]+)/
+        );
+
+    if (!match) {
+        return null;
+    }
+
+    return sessions.get(
+        match[1]
+    ) || null;
+}
+
+function requireLogin(req, res, next) {
+
+    const session =
+        getSession(req);
+
+    if (!session) {
+
+        return res.status(401).json({
+            success: false,
+            loggedIn: false,
+            message: 'Não autenticado.'
+        });
+    }
+
+    req.username =
+        session.username;
+
+    next();
+}
+
+/*
+======================================================
+LOGIN PAGE
+======================================================
+*/
+
 app.get('/login.html', (req, res) => {
 
-    const session = getSession(req);
+    const session =
+        getSession(req);
 
     if (session) {
         return res.redirect('/');
     }
 
-    res.sendFile(__dirname + '/login.html');
+    res.sendFile(
+        __dirname + '/login.html'
+    );
 });
 
-
-// ======================================================
-// CADASTRO
-// ======================================================
+/*
+======================================================
+CADASTRO
+======================================================
+*/
 
 app.post('/register', async (req, res) => {
 
-    const username = String(req.body.username || '').trim();
-    const password = String(req.body.password || '');
+    const username =
+        String(
+            req.body.username || ''
+        ).trim();
+
+    const password =
+        String(
+            req.body.password || ''
+        );
 
     if (!username || !password) {
-        return res.status(400).send(
-            'Preencha todos os campos.'
-        );
+
+        return res.status(400).json({
+            success: false,
+            message:
+                'Preencha todos os campos.'
+        });
     }
 
     if (username.length < 3) {
-        return res.status(400).send(
-            'O usuário precisa ter pelo menos 3 caracteres.'
-        );
+
+        return res.status(400).json({
+            success: false,
+            message:
+                'O usuário precisa ter pelo menos 3 caracteres.'
+        });
     }
 
     if (password.length < 4) {
-        return res.status(400).send(
-            'A senha precisa ter pelo menos 4 caracteres.'
-        );
+
+        return res.status(400).json({
+            success: false,
+            message:
+                'A senha precisa ter pelo menos 4 caracteres.'
+        });
     }
 
     try {
 
         const hashedPassword =
-            await bcrypt.hash(password, 10);
+            await bcrypt.hash(
+                password,
+                10
+            );
 
         db.run(
             `
@@ -160,51 +370,80 @@ app.post('/register', async (req, res) => {
                         err.message &&
                         err.message.includes('UNIQUE')
                     ) {
-                        return res.status(400).send(
-                            'Usuário já existe!'
-                        );
+
+                        return res.status(400).json({
+                            success: false,
+                            message:
+                                'Usuário já existe!'
+                        });
                     }
 
-                    console.error(err);
-
-                    return res.status(500).send(
-                        'Erro ao criar conta.'
+                    console.error(
+                        'Erro no cadastro:',
+                        err
                     );
+
+                    return res.status(500).json({
+                        success: false,
+                        message:
+                            'Erro ao criar conta.'
+                    });
                 }
 
-                res.send(
-                    'Conta criada com sucesso!'
-                );
+                return res.json({
+
+                    success: true,
+
+                    message:
+                        'Conta criada com sucesso!',
+
+                    username
+
+                });
+
             }
         );
 
     } catch (error) {
 
-        console.error(error);
-
-        res.status(500).send(
-            'Erro no servidor.'
+        console.error(
+            'Erro no cadastro:',
+            error
         );
+
+        return res.status(500).json({
+            success: false,
+            message:
+                'Erro no servidor.'
+        });
     }
 });
 
-
-// ======================================================
-// LOGIN
-// ======================================================
+/*
+======================================================
+LOGIN
+======================================================
+*/
 
 app.post('/login', (req, res) => {
 
     const username =
-        String(req.body.username || '').trim();
+        String(
+            req.body.username || ''
+        ).trim();
 
     const password =
-        String(req.body.password || '');
+        String(
+            req.body.password || ''
+        );
 
     if (!username || !password) {
-        return res.status(400).send(
-            'Preencha usuário e senha.'
-        );
+
+        return res.status(400).json({
+            success: false,
+            message:
+                'Preencha usuário e senha.'
+        });
     }
 
     db.get(
@@ -218,17 +457,25 @@ app.post('/login', (req, res) => {
 
             if (err) {
 
-                console.error(err);
-
-                return res.status(500).send(
-                    'Erro no servidor.'
+                console.error(
+                    'Erro no login:',
+                    err
                 );
+
+                return res.status(500).json({
+                    success: false,
+                    message:
+                        'Erro no servidor.'
+                });
             }
 
             if (!user) {
-                return res.status(401).send(
-                    'Usuário ou senha incorretos!'
-                );
+
+                return res.status(401).json({
+                    success: false,
+                    message:
+                        'Usuário ou senha incorretos!'
+                });
             }
 
             try {
@@ -240,154 +487,90 @@ app.post('/login', (req, res) => {
                     );
 
                 if (!passwordCorrect) {
-                    return res.status(401).send(
-                        'Usuário ou senha incorretos!'
-                    );
+
+                    return res.status(401).json({
+                        success: false,
+                        message:
+                            'Usuário ou senha incorretos!'
+                    });
                 }
 
                 const token =
-                    createSession(user.username);
+                    createSession(
+                        user.username
+                    );
+
+                /*
+                Para o site e para o Capacitor.
+
+                SameSite=None permite que o cookie
+                seja enviado em requisições vindas
+                do aplicativo.
+
+                Secure exige HTTPS.
+                */
 
                 res.setHeader(
                     'Set-Cookie',
-                    `chat_session=${token}; HttpOnly; Path=/; SameSite=Lax`
+                    [
+                        `chat_session=${token}`,
+                        'HttpOnly',
+                        'Path=/',
+                        'Max-Age=2592000',
+                        'SameSite=None',
+                        'Secure'
+                    ].join('; ')
                 );
 
-                res.json({
+                return res.json({
+
                     success: true,
-                    username: user.username
+
+                    loggedIn: true,
+
+                    username:
+                        user.username
+
                 });
 
             } catch (error) {
 
-                console.error(error);
-
-                res.status(500).send(
-                    'Erro no servidor.'
+                console.error(
+                    'Erro ao comparar senha:',
+                    error
                 );
+
+                return res.status(500).json({
+                    success: false,
+                    message:
+                        'Erro no servidor.'
+                });
             }
         }
     );
 });
 
-
-// ======================================================
-// USUÁRIO LOGADO
-// ======================================================
+/*
+======================================================
+USUÁRIO LOGADO
+======================================================
+*/
 
 app.get('/me', (req, res) => {
 
-    const session = getSession(req);
+    const session =
+        getSession(req);
 
     if (!session) {
 
         return res.status(401).json({
+
+            success: false,
+
             loggedIn: false
+
         });
     }
-
-    res.json({
-        loggedIn: true,
-        username: session.username
-    });
-});
-
-
-// ======================================================
-// LOGOUT
-// ======================================================
-
-app.post('/logout', (req, res) => {
-
-    const cookies = req.headers.cookie;
-
-    if (cookies) {
-
-        const match =
-            cookies.match(/chat_session=([^;]+)/);
-
-        if (match) {
-            sessions.delete(match[1]);
-        }
-    }
-
-    res.setHeader(
-        'Set-Cookie',
-        'chat_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax'
-    );
-
-    res.json({
-        success: true
-    });
-});
-
-
-// ======================================================
-// PROTEGER O CHAT
-// ======================================================
-
-// IMPORTANTE:
-// O login.html precisa continuar acessível.
-// Tudo que estiver na raiz fica protegido.
-
-app.get('/', requireLogin, (req, res) => {
-
-    res.sendFile(
-        __dirname + '/index.html'
-    );
-});
-
-
-// ======================================================
-// ARQUIVOS ESTÁTICOS
-// ======================================================
-
-// NÃO coloque express.static antes da proteção da raiz.
-// Aqui liberamos somente arquivos necessários.
-
-app.use('/css', express.static(__dirname + '/css'));
-app.use('/js', express.static(__dirname + '/js'));
-app.use('/assets', express.static(__dirname + '/assets'));
-
-
-// ======================================================
-// AVATAR
-// ======================================================
-
-app.post('/update-avatar', requireLogin, (req, res) => {
-
-    const username = req.username;
-    const avatar = req.body.avatar || '';
-
-    db.run(
-        `
-        UPDATE users
-        SET avatar = ?
-        WHERE username = ?
-        `,
-        [avatar, username],
-        function(err) {
-
-            if (err) {
-
-                console.error(err);
-
-                return res.status(500).send(
-                    'Erro ao atualizar avatar.'
-                );
-            }
-
-            res.send(
-                'Avatar atualizado com sucesso!'
-            );
-        }
-    );
-});
-
-
-app.get('/user/:username', requireLogin, (req, res) => {
-
-    const username = req.params.username;
 
     db.get(
         `
@@ -395,744 +578,1429 @@ app.get('/user/:username', requireLogin, (req, res) => {
         FROM users
         WHERE username = ?
         `,
-        [username],
+        [session.username],
         (err, user) => {
 
-            if (err || !user) {
+            if (err) {
 
-                return res.json({
-                    username,
-                    avatar: ''
+                return res.status(500).json({
+                    success: false,
+                    loggedIn: false
                 });
             }
 
-            res.json(user);
-        }
-    );
-});
+            return res.json({
 
+                success: true,
 
-// ======================================================
-// AMIGOS
-// ======================================================
+                loggedIn: true,
 
-app.get('/friends/:username', requireLogin, (req, res) => {
+                username:
+                    session.username,
 
-    const username = req.params.username;
-
-    db.all(
-        `
-        SELECT *
-        FROM friendships
-        WHERE user1 = ?
-        OR user2 = ?
-        `,
-        [
-            username,
-            username
-        ],
-        (err, rows) => {
-
-            if (err) {
-
-                return res.status(500).send(
-                    'Erro ao buscar amigos'
-                );
-            }
-
-            const friendNames = [];
-            const pendingNames = [];
-
-            rows.forEach(row => {
-
-                if (row.status === 'accepted') {
-
-                    friendNames.push(
-                        row.user1 === username
-                            ? row.user2
-                            : row.user1
-                    );
-
-                }
-
-                else if (
-                    row.status === 'pending' &&
-                    row.user2 === username
-                ) {
-
-                    pendingNames.push(row.user1);
-                }
+                avatar:
+                    user
+                        ? user.avatar
+                        : ''
 
             });
 
-
-            const getDetails =
-                (names, callback) => {
-
-                    if (names.length === 0) {
-                        return callback([]);
-                    }
-
-                    const placeholders =
-                        names.map(() => '?').join(',');
-
-                    db.all(
-                        `
-                        SELECT username, avatar
-                        FROM users
-                        WHERE username IN (${placeholders})
-                        `,
-                        names,
-                        (err, results) => {
-
-                            callback(
-                                results || []
-                            );
-                        }
-                    );
-                };
-
-
-            getDetails(
-                friendNames,
-                friends => {
-
-                    getDetails(
-                        pendingNames,
-                        pendingRequests => {
-
-                            res.json({
-                                friends,
-                                pendingRequests
-                            });
-
-                        }
-                    );
-
-                }
-            );
-
         }
     );
 });
 
+/*
+======================================================
+LOGOUT
+======================================================
+*/
 
-// ======================================================
-// ADICIONAR AMIGO
-// ======================================================
+app.post('/logout', (req, res) => {
 
-app.post('/add-friend', requireLogin, (req, res) => {
+    const cookies =
+        req.headers.cookie;
 
-    const username = req.username;
+    if (cookies) {
 
-    const friendName =
-        String(req.body.friendName || '').trim();
+        const match =
+            cookies.match(
+                /(?:^|;\s*)chat_session=([^;]+)/
+            );
 
-    if (!friendName) {
-        return res.status(400).send(
-            'Digite um usuário.'
+        if (match) {
+
+            sessions.delete(
+                match[1]
+            );
+        }
+    }
+
+    res.setHeader(
+        'Set-Cookie',
+        [
+            'chat_session=',
+            'HttpOnly',
+            'Path=/',
+            'Max-Age=0',
+            'SameSite=None',
+            'Secure'
+        ].join('; ')
+    );
+
+    return res.json({
+        success: true
+    });
+});
+
+/*
+======================================================
+CHAT
+======================================================
+*/
+
+app.get('/', (req, res) => {
+
+    const session =
+        getSession(req);
+
+    if (!session) {
+
+        return res.redirect(
+            '/login.html'
         );
     }
 
-    if (username === friendName) {
+    res.sendFile(
+        __dirname + '/index.html'
+    );
+});
 
-        return res.status(400).send(
-            'Você não pode se adicionar.'
-        );
-    }
+/*
+======================================================
+ARQUIVOS ESTÁTICOS
+======================================================
+*/
 
-    db.get(
-        `
-        SELECT *
-        FROM users
-        WHERE username = ?
-        `,
-        [friendName],
-        (err, user) => {
+app.use(
+    '/css',
+    express.static(
+        __dirname + '/css'
+    )
+);
 
-            if (!user) {
+app.use(
+    '/js',
+    express.static(
+        __dirname + '/js'
+    )
+);
 
-                return res.status(404).send(
-                    'Usuário não encontrado!'
-                );
-            }
+app.use(
+    '/assets',
+    express.static(
+        __dirname + '/assets'
+    )
+);
 
-            db.get(
-                `
-                SELECT *
-                FROM friendships
-                WHERE
-                (user1 = ? AND user2 = ?)
-                OR
-                (user1 = ? AND user2 = ?)
-                `,
-                [
-                    username,
-                    friendName,
-                    friendName,
-                    username
-                ],
-                (err, existing) => {
+/*
+======================================================
+AVATAR
+======================================================
+*/
 
-                    if (existing) {
+app.post(
+    '/update-avatar',
+    requireLogin,
+    (req, res) => {
 
-                        if (
-                            existing.status ===
-                            'accepted'
-                        ) {
+        const username =
+            req.username;
 
-                            return res.status(400).send(
-                                'Vocês já são amigos.'
-                            );
-                        }
+        const avatar =
+            String(
+                req.body.avatar || ''
+            );
 
-                        return res.status(400).send(
-                            'Já existe um pedido pendente entre vocês.'
-                        );
-                    }
+        db.run(
+            `
+            UPDATE users
+            SET avatar = ?
+            WHERE username = ?
+            `,
+            [
+                avatar,
+                username
+            ],
+            function(err) {
 
-                    db.run(
-                        `
-                        INSERT INTO friendships
-                        (user1, user2, status)
-                        VALUES (?, ?, 'pending')
-                        `,
-                        [
-                            username,
-                            friendName
-                        ],
-                        err => {
+                if (err) {
 
-                            if (err) {
-
-                                return res.status(500).send(
-                                    'Erro ao enviar pedido.'
-                                );
-                            }
-
-                            res.send(
-                                'Pedido de amizade enviado!'
-                            );
-                        }
+                    console.error(
+                        'Erro avatar:',
+                        err
                     );
 
+                    return res.status(500).json({
+                        success: false,
+                        message:
+                            'Erro ao atualizar avatar.'
+                    });
                 }
-            );
 
-        }
-    );
-});
+                return res.json({
+                    success: true,
+                    message:
+                        'Avatar atualizado com sucesso!'
+                });
 
-
-// ======================================================
-// ACEITAR AMIGO
-// ======================================================
-
-app.post('/accept-friend', requireLogin, (req, res) => {
-
-    const username = req.username;
-
-    const friendName =
-        String(req.body.friendName || '').trim();
-
-    db.run(
-        `
-        UPDATE friendships
-        SET status = 'accepted'
-        WHERE
-        (user1 = ? AND user2 = ?)
-        OR
-        (user1 = ? AND user2 = ?)
-        `,
-        [
-            friendName,
-            username,
-            username,
-            friendName
-        ],
-        function(err) {
-
-            if (err) {
-
-                return res.status(400).send(
-                    'Erro ao aceitar pedido.'
-                );
             }
-
-            res.send(
-                'Pedido aceito!'
-            );
-        }
-    );
-});
-
-
-// ======================================================
-// REMOVER AMIGO
-// ======================================================
-
-app.post('/remove-friend', requireLogin, (req, res) => {
-
-    const username = req.username;
-
-    const friendName =
-        String(req.body.friendName || '').trim();
-
-    db.run(
-        `
-        DELETE FROM friendships
-        WHERE
-        (user1 = ? AND user2 = ?)
-        OR
-        (user1 = ? AND user2 = ?)
-        `,
-        [
-            username,
-            friendName,
-            friendName,
-            username
-        ],
-        err => {
-
-            if (err) {
-
-                return res.status(500).send(
-                    'Erro ao remover amizade.'
-                );
-            }
-
-            res.send(
-                'Amizade removida.'
-            );
-        }
-    );
-});
-
-
-// ======================================================
-// SOCKET.IO
-// ======================================================
-
-const activeUsers = {};
-
-io.on('connection', socket => {
-
-    socket.callRoom = null;
-    socket.username = null;
-
-
-    // ==================================================
-    // REGISTRAR USUÁRIO
-    // ==================================================
-
-    socket.on('register user', username => {
-
-        if (!username) {
-            return;
-        }
-
-        activeUsers[socket.id] = username;
-
-        socket.username = username;
-
-        socket.join(username);
-    });
-
-
-    // ==================================================
-    // ATUALIZAR AMIGOS
-    // ==================================================
-
-    socket.on('notify update', targetUser => {
-
-        if (!targetUser) {
-            return;
-        }
-
-        io.to(targetUser).emit(
-            'refresh friends'
         );
-    });
+    }
+);
 
+/*
+======================================================
+USUÁRIO
+======================================================
+*/
 
-    // ==================================================
-    // FECHAR CHAT
-    // ==================================================
+app.get(
+    '/user/:username',
+    requireLogin,
+    (req, res) => {
 
-    socket.on('force close chat', data => {
+        const username =
+            req.params.username;
 
-        if (!data) {
-            return;
-        }
+        db.get(
+            `
+            SELECT username, avatar
+            FROM users
+            WHERE username = ?
+            `,
+            [username],
+            (err, user) => {
 
-        io.to(data.targetUser).emit(
-            'close chat with',
-            data.currentUser
-        );
-    });
+                if (err) {
 
+                    return res.status(500).json({
+                        success: false
+                    });
+                }
 
-    // ==================================================
-    // ENTRAR NA SALA
-    // ==================================================
+                if (!user) {
 
-    socket.on('join room', room => {
+                    return res.json({
 
-        if (!room) {
-            return;
-        }
+                        username,
 
-        socket.rooms.forEach(r => {
+                        avatar: ''
 
-            if (
-                r !== socket.id &&
-                r !== activeUsers[socket.id]
-            ) {
+                    });
+                }
 
-                socket.leave(r);
+                return res.json(user);
             }
+        );
+    }
+);
 
-        });
+/*
+======================================================
+AMIGOS
+======================================================
+*/
 
-        socket.join(room);
+app.get(
+    '/friends/:username',
+    requireLogin,
+    (req, res) => {
 
-        const parts =
-            room.includes('_')
-                ? room.split('_')
-                : room.split('-');
+        const username =
+            req.params.username;
 
-        if (parts.length < 2) {
-            return;
+        /*
+        Impede que uma pessoa consulte
+        a lista de outro usuário.
+        */
+
+        if (
+            username !== req.username
+        ) {
+
+            return res.status(403).json({
+                success: false,
+                message:
+                    'Acesso negado.'
+            });
         }
 
         db.all(
             `
             SELECT *
-            FROM private_messages
-            WHERE
-            (sender = ? AND receiver = ?)
-            OR
-            (sender = ? AND receiver = ?)
-            ORDER BY id ASC
+            FROM friendships
+            WHERE user1 = ?
+            OR user2 = ?
             `,
             [
-                parts[0],
-                parts[1],
-                parts[1],
-                parts[0]
+                username,
+                username
             ],
             (err, rows) => {
 
-                if (err || !rows) {
-                    return;
+                if (err) {
+
+                    console.error(
+                        'Erro amigos:',
+                        err
+                    );
+
+                    return res.status(500).json({
+                        success: false,
+                        message:
+                            'Erro ao buscar amigos.'
+                    });
                 }
 
-                const sendWithAvatars =
-                    async () => {
+                const friendNames = [];
+                const pendingNames = [];
 
-                        const enhancedRows = [];
+                rows.forEach(row => {
 
-                        for (
-                            const msg of rows
+                    if (
+                        row.status ===
+                        'accepted'
+                    ) {
+
+                        friendNames.push(
+                            row.user1 === username
+                                ? row.user2
+                                : row.user1
+                        );
+                    }
+
+                    else if (
+                        row.status ===
+                            'pending' &&
+                        row.user2 === username
+                    ) {
+
+                        pendingNames.push(
+                            row.user1
+                        );
+                    }
+
+                });
+
+                const getDetails =
+                    (names, callback) => {
+
+                        if (
+                            names.length === 0
                         ) {
 
-                            await new Promise(
-                                resolve => {
-
-                                    db.get(
-                                        `
-                                        SELECT avatar
-                                        FROM users
-                                        WHERE username = ?
-                                        `,
-                                        [msg.sender],
-                                        (err, u) => {
-
-                                            enhancedRows.push({
-                                                ...msg,
-                                                avatar:
-                                                    u
-                                                        ? u.avatar
-                                                        : ''
-                                            });
-
-                                            resolve();
-                                        }
-                                    );
-
-                                }
-                            );
-
+                            return callback([]);
                         }
 
-                        socket.emit(
-                            'load private history',
-                            enhancedRows
+                        const placeholders =
+                            names
+                                .map(() => '?')
+                                .join(',');
+
+                        db.all(
+                            `
+                            SELECT username, avatar
+                            FROM users
+                            WHERE username IN (${placeholders})
+                            `,
+                            names,
+                            (err, results) => {
+
+                                if (err) {
+
+                                    return callback([]);
+                                }
+
+                                callback(
+                                    results || []
+                                );
+                            }
                         );
                     };
 
-                sendWithAvatars();
+                getDetails(
+                    friendNames,
+                    friends => {
 
+                        getDetails(
+                            pendingNames,
+                            pendingRequests => {
+
+                                return res.json({
+
+                                    success: true,
+
+                                    friends,
+
+                                    pendingRequests
+
+                                });
+
+                            }
+                        );
+                    }
+                );
             }
         );
+    }
+);
 
-    });
+/*
+======================================================
+ADICIONAR AMIGO
+======================================================
+*/
 
+app.post(
+    '/add-friend',
+    requireLogin,
+    (req, res) => {
 
-    // ==================================================
-    // MENSAGEM PRIVADA
-    // ==================================================
+        const username =
+            req.username;
 
-    socket.on('private message', data => {
+        const friendName =
+            String(
+                req.body.friendName || ''
+            ).trim();
 
-        if (!data) {
-            return;
+        if (!friendName) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    'Digite um usuário.'
+            });
+        }
+
+        if (
+            username === friendName
+        ) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    'Você não pode se adicionar.'
+            });
         }
 
         db.get(
             `
-            SELECT avatar
+            SELECT username
             FROM users
             WHERE username = ?
             `,
-            [data.sender],
-            (err, userRow) => {
+            [friendName],
+            (err, user) => {
 
-                const senderAvatar =
-                    userRow
-                        ? userRow.avatar
-                        : '';
+                if (err) {
 
-                db.run(
+                    return res.status(500).json({
+                        success: false,
+                        message:
+                            'Erro ao procurar usuário.'
+                    });
+                }
+
+                if (!user) {
+
+                    return res.status(404).json({
+                        success: false,
+                        message:
+                            'Usuário não encontrado!'
+                    });
+                }
+
+                db.get(
                     `
-                    INSERT INTO private_messages
-                    (sender, receiver, message)
-                    VALUES (?, ?, ?)
+                    SELECT *
+                    FROM friendships
+                    WHERE
+                    (user1 = ? AND user2 = ?)
+                    OR
+                    (user1 = ? AND user2 = ?)
                     `,
                     [
-                        data.sender,
-                        data.receiver,
-                        data.message
+                        username,
+                        friendName,
+                        friendName,
+                        username
                     ],
-                    err => {
+                    (err, existing) => {
 
                         if (err) {
-                            return;
+
+                            return res.status(500).json({
+                                success: false,
+                                message:
+                                    'Erro ao verificar amizade.'
+                            });
                         }
 
-                        io.to(data.room).emit(
-                            'private message',
-                            {
-                                ...data,
-                                avatar: senderAvatar
-                            }
-                        );
+                        if (existing) {
 
-
-                        const receiverSockets =
-                            io.sockets.adapter.rooms.get(
-                                data.receiver
-                            );
-
-                        if (receiverSockets) {
-
-                            for (
-                                const socketId
-                                of receiverSockets
+                            if (
+                                existing.status ===
+                                'accepted'
                             ) {
 
-                                const receiverSocket =
-                                    io.sockets.sockets.get(
-                                        socketId
-                                    );
-
-                                if (
-                                    receiverSocket &&
-                                    !receiverSocket.rooms.has(
-                                        data.room
-                                    )
-                                ) {
-
-                                    receiverSocket.emit(
-                                        'private message',
-                                        {
-                                            ...data,
-                                            avatar:
-                                                senderAvatar
-                                        }
-                                    );
-                                }
-
+                                return res.status(400).json({
+                                    success: false,
+                                    message:
+                                        'Vocês já são amigos.'
+                                });
                             }
 
+                            return res.status(400).json({
+                                success: false,
+                                message:
+                                    'Já existe um pedido pendente entre vocês.'
+                            });
                         }
 
+                        db.run(
+                            `
+                            INSERT INTO friendships
+                            (user1, user2, status)
+                            VALUES (?, ?, 'pending')
+                            `,
+                            [
+                                username,
+                                friendName
+                            ],
+                            err => {
+
+                                if (err) {
+
+                                    console.error(
+                                        'Erro amizade:',
+                                        err
+                                    );
+
+                                    return res.status(500).json({
+                                        success: false,
+                                        message:
+                                            'Erro ao enviar pedido.'
+                                    });
+                                }
+
+                                /*
+                                Atualiza o outro usuário
+                                em tempo real.
+                                */
+
+                                io.to(
+                                    friendName
+                                ).emit(
+                                    'refresh friends'
+                                );
+
+                                return res.json({
+                                    success: true,
+                                    message:
+                                        'Pedido de amizade enviado!'
+                                });
+                            }
+                        );
+                    }
+                );
+            }
+        );
+    }
+);
+
+/*
+======================================================
+ACEITAR AMIGO
+======================================================
+*/
+
+app.post(
+    '/accept-friend',
+    requireLogin,
+    (req, res) => {
+
+        const username =
+            req.username;
+
+        const friendName =
+            String(
+                req.body.friendName || ''
+            ).trim();
+
+        db.run(
+            `
+            UPDATE friendships
+            SET status = 'accepted'
+            WHERE
+            user1 = ?
+            AND user2 = ?
+            AND status = 'pending'
+            `,
+            [
+                friendName,
+                username
+            ],
+            function(err) {
+
+                if (err) {
+
+                    return res.status(500).json({
+                        success: false,
+                        message:
+                            'Erro ao aceitar pedido.'
+                    });
+                }
+
+                if (this.changes === 0) {
+
+                    return res.status(400).json({
+                        success: false,
+                        message:
+                            'Pedido de amizade não encontrado.'
+                    });
+                }
+
+                io.to(
+                    friendName
+                ).emit(
+                    'refresh friends'
+                );
+
+                io.to(
+                    username
+                ).emit(
+                    'refresh friends'
+                );
+
+                return res.json({
+                    success: true,
+                    message:
+                        'Pedido aceito!'
+                });
+            }
+        );
+    }
+);
+
+/*
+======================================================
+REMOVER AMIGO
+======================================================
+*/
+
+app.post(
+    '/remove-friend',
+    requireLogin,
+    (req, res) => {
+
+        const username =
+            req.username;
+
+        const friendName =
+            String(
+                req.body.friendName || ''
+            ).trim();
+
+        db.run(
+            `
+            DELETE FROM friendships
+            WHERE
+            (user1 = ? AND user2 = ?)
+            OR
+            (user1 = ? AND user2 = ?)
+            `,
+            [
+                username,
+                friendName,
+                friendName,
+                username
+            ],
+            function(err) {
+
+                if (err) {
+
+                    return res.status(500).json({
+                        success: false,
+                        message:
+                            'Erro ao remover amizade.'
+                    });
+                }
+
+                io.to(
+                    friendName
+                ).emit(
+                    'refresh friends'
+                );
+
+                io.to(
+                    username
+                ).emit(
+                    'refresh friends'
+                );
+
+                return res.json({
+                    success: true,
+                    message:
+                        'Amizade removida.'
+                });
+            }
+        );
+    }
+);
+
+/*
+======================================================
+SOCKET.IO
+======================================================
+*/
+
+const activeUsers = {};
+
+io.on(
+    'connection',
+    socket => {
+
+        console.log(
+            'Socket conectado:',
+            socket.id
+        );
+
+        socket.callRoom = null;
+        socket.username = null;
+
+        /*
+        ==============================================
+        REGISTRAR USUÁRIO
+        ==============================================
+        */
+
+        socket.on(
+            'register user',
+            username => {
+
+                if (!username) {
+                    return;
+                }
+
+                username =
+                    String(
+                        username
+                    ).trim();
+
+                if (!username) {
+                    return;
+                }
+
+                activeUsers[
+                    socket.id
+                ] = username;
+
+                socket.username =
+                    username;
+
+                socket.join(
+                    username
+                );
+
+                console.log(
+                    'Usuário conectado:',
+                    username
+                );
+            }
+        );
+
+        /*
+        ==============================================
+        ATUALIZAR AMIGOS
+        ==============================================
+        */
+
+        socket.on(
+            'notify update',
+            targetUser => {
+
+                if (!targetUser) {
+                    return;
+                }
+
+                io.to(
+                    targetUser
+                ).emit(
+                    'refresh friends'
+                );
+            }
+        );
+
+        /*
+        ==============================================
+        FECHAR CHAT
+        ==============================================
+        */
+
+        socket.on(
+            'force close chat',
+            data => {
+
+                if (!data) {
+                    return;
+                }
+
+                if (!data.targetUser) {
+                    return;
+                }
+
+                io.to(
+                    data.targetUser
+                ).emit(
+                    'close chat with',
+                    data.currentUser
+                );
+            }
+        );
+
+        /*
+        ==============================================
+        ENTRAR NA SALA
+        ==============================================
+        */
+
+        socket.on(
+            'join room',
+            room => {
+
+                if (!room) {
+                    return;
+                }
+
+                /*
+                Sai de salas antigas,
+                mas mantém:
+                - socket.id
+                - sala do usuário
+                */
+
+                [...socket.rooms].forEach(
+                    r => {
+
+                        if (
+                            r !== socket.id &&
+                            r !== socket.username
+                        ) {
+
+                            socket.leave(r);
+                        }
                     }
                 );
 
+                socket.join(room);
+
+                const parts =
+                    room.includes('_')
+                        ? room.split('_')
+                        : room.split('-');
+
+                if (
+                    parts.length < 2
+                ) {
+                    return;
+                }
+
+                const user1 =
+                    parts[0];
+
+                const user2 =
+                    parts[1];
+
+                db.all(
+                    `
+                    SELECT *
+                    FROM private_messages
+                    WHERE
+                    (sender = ? AND receiver = ?)
+                    OR
+                    (sender = ? AND receiver = ?)
+                    ORDER BY id ASC
+                    `,
+                    [
+                        user1,
+                        user2,
+                        user2,
+                        user1
+                    ],
+                    (err, rows) => {
+
+                        if (
+                            err ||
+                            !rows
+                        ) {
+                            return;
+                        }
+
+                        const enhancedRows = [];
+
+                        if (
+                            rows.length === 0
+                        ) {
+
+                            return socket.emit(
+                                'load private history',
+                                []
+                            );
+                        }
+
+                        let completed = 0;
+
+                        rows.forEach(
+                            msg => {
+
+                                db.get(
+                                    `
+                                    SELECT avatar
+                                    FROM users
+                                    WHERE username = ?
+                                    `,
+                                    [
+                                        msg.sender
+                                    ],
+                                    (avatarErr, user) => {
+
+                                        enhancedRows.push({
+
+                                            ...msg,
+
+                                            avatar:
+                                                user
+                                                    ? user.avatar
+                                                    : ''
+
+                                        });
+
+                                        completed++;
+
+                                        if (
+                                            completed ===
+                                            rows.length
+                                        ) {
+
+                                            enhancedRows.sort(
+                                                (a, b) =>
+                                                    a.id - b.id
+                                            );
+
+                                            socket.emit(
+                                                'load private history',
+                                                enhancedRows
+                                            );
+                                        }
+                                    }
+                                );
+                            }
+                        );
+                    }
+                );
             }
         );
-    });
 
+        /*
+        ==============================================
+        MENSAGEM PRIVADA
+        ==============================================
+        */
 
-    // ==================================================
-    // CALL OFFER
-    // ==================================================
+        socket.on(
+            'private message',
+            data => {
 
-    socket.on('call-offer', data => {
+                if (!data) {
+                    return;
+                }
 
-        if (!data || !data.room) {
-            return;
-        }
+                if (
+                    !data.sender ||
+                    !data.receiver ||
+                    !data.message
+                ) {
+                    return;
+                }
 
-        socket.callRoom = data.room;
+                const sender =
+                    String(
+                        data.sender
+                    ).trim();
 
-        socket.to(data.room).emit(
+                const receiver =
+                    String(
+                        data.receiver
+                    ).trim();
+
+                const message =
+                    String(
+                        data.message
+                    );
+
+                if (
+                    !sender ||
+                    !receiver ||
+                    !message
+                ) {
+                    return;
+                }
+
+                db.get(
+                    `
+                    SELECT avatar
+                    FROM users
+                    WHERE username = ?
+                    `,
+                    [sender],
+                    (err, userRow) => {
+
+                        const senderAvatar =
+                            userRow
+                                ? userRow.avatar
+                                : '';
+
+                        db.run(
+                            `
+                            INSERT INTO private_messages
+                            (sender, receiver, message)
+                            VALUES (?, ?, ?)
+                            `,
+                            [
+                                sender,
+                                receiver,
+                                message
+                            ],
+                            function(err) {
+
+                                if (err) {
+
+                                    console.error(
+                                        'Erro mensagem:',
+                                        err
+                                    );
+
+                                    return;
+                                }
+
+                                const messageData = {
+
+                                    id: this.lastID,
+
+                                    sender,
+
+                                    receiver,
+
+                                    message,
+
+                                    room:
+                                        data.room,
+
+                                    avatar:
+                                        senderAvatar
+
+                                };
+
+                                /*
+                                Envia para quem está
+                                na sala.
+                                */
+
+                                if (
+                                    data.room
+                                ) {
+
+                                    io.to(
+                                        data.room
+                                    ).emit(
+                                        'private message',
+                                        messageData
+                                    );
+                                }
+
+                                /*
+                                Se o receptor não estiver
+                                na sala, envia diretamente
+                                para o usuário.
+                                */
+
+                                const receiverSockets =
+                                    io.sockets.adapter.rooms.get(
+                                        receiver
+                                    );
+
+                                if (
+                                    receiverSockets
+                                ) {
+
+                                    for (
+                                        const socketId
+                                        of receiverSockets
+                                    ) {
+
+                                        const receiverSocket =
+                                            io.sockets.sockets.get(
+                                                socketId
+                                            );
+
+                                        if (
+                                            receiverSocket &&
+                                            data.room &&
+                                            !receiverSocket.rooms.has(
+                                                data.room
+                                            )
+                                        ) {
+
+                                            receiverSocket.emit(
+                                                'private message',
+                                                messageData
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        );
+                    }
+                );
+            }
+        );
+
+        /*
+        ==============================================
+        CALL OFFER
+        ==============================================
+        */
+
+        socket.on(
             'call-offer',
-            data
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+                socket.callRoom =
+                    data.room;
+
+                socket.to(
+                    data.room
+                ).emit(
+                    'call-offer',
+                    data
+                );
+            }
         );
-    });
 
+        /*
+        ==============================================
+        CALL ANSWER
+        ==============================================
+        */
 
-    // ==================================================
-    // CALL ANSWER
-    // ==================================================
-
-    socket.on('call-answer', data => {
-
-        if (!data || !data.room) {
-            return;
-        }
-
-        socket.callRoom = data.room;
-
-        socket.to(data.room).emit(
+        socket.on(
             'call-answer',
-            data
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+                socket.callRoom =
+                    data.room;
+
+                socket.to(
+                    data.room
+                ).emit(
+                    'call-answer',
+                    data
+                );
+            }
         );
-    });
 
+        /*
+        ==============================================
+        RENEGOTIATION OFFER
+        ==============================================
+        */
 
-    // ==================================================
-    // RENEGOTIATION OFFER
-    // ==================================================
-
-    socket.on('renegotiation-offer', data => {
-
-        if (!data || !data.room) {
-            return;
-        }
-
-        socket.callRoom = data.room;
-
-        socket.to(data.room).emit(
+        socket.on(
             'renegotiation-offer',
-            data
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+                socket.callRoom =
+                    data.room;
+
+                socket.to(
+                    data.room
+                ).emit(
+                    'renegotiation-offer',
+                    data
+                );
+            }
         );
-    });
 
+        /*
+        ==============================================
+        RENEGOTIATION ANSWER
+        ==============================================
+        */
 
-    // ==================================================
-    // RENEGOTIATION ANSWER
-    // ==================================================
-
-    socket.on('renegotiation-answer', data => {
-
-        if (!data || !data.room) {
-            return;
-        }
-
-        socket.callRoom = data.room;
-
-        socket.to(data.room).emit(
+        socket.on(
             'renegotiation-answer',
-            data
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+                socket.callRoom =
+                    data.room;
+
+                socket.to(
+                    data.room
+                ).emit(
+                    'renegotiation-answer',
+                    data
+                );
+            }
         );
-    });
 
+        /*
+        ==============================================
+        ICE
+        ==============================================
+        */
 
-    // ==================================================
-    // ICE
-    // ==================================================
-
-    socket.on('ice-candidate', data => {
-
-        if (!data || !data.room) {
-            return;
-        }
-
-        socket.to(data.room).emit(
+        socket.on(
             'ice-candidate',
-            data
+            data => {
+
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
+
+                socket.to(
+                    data.room
+                ).emit(
+                    'ice-candidate',
+                    data
+                );
+            }
         );
-    });
 
+        /*
+        ==============================================
+        DESLIGAR
+        ==============================================
+        */
 
-    // ==================================================
-    // DESLIGAR CHAMADA
-    // ==================================================
+        socket.on(
+            'hang-up',
+            data => {
 
-    socket.on('hang-up', data => {
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
 
-        if (!data || !data.room) {
-            return;
-        }
+                if (
+                    socket.callRoom ===
+                    data.room
+                ) {
 
-        if (socket.callRoom === data.room) {
-            socket.callRoom = null;
-        }
+                    socket.callRoom =
+                        null;
+                }
 
-        socket.to(data.room).emit(
-            'hang-up'
+                socket.to(
+                    data.room
+                ).emit(
+                    'hang-up'
+                );
+            }
         );
-    });
 
+        /*
+        ==============================================
+        TRANSMISSÃO DE TELA PAROU
+        ==============================================
+        */
 
-    // ==================================================
-    // TRANSMISSÃO DE TELA PAROU
-    // ==================================================
+        socket.on(
+            'screen-stopped',
+            data => {
 
-    socket.on('screen-stopped', data => {
+                if (
+                    !data ||
+                    !data.room
+                ) {
+                    return;
+                }
 
-        if (!data || !data.room) {
-            return;
-        }
-
-        socket.to(data.room).emit(
-            'screen-stopped'
+                socket.to(
+                    data.room
+                ).emit(
+                    'screen-stopped'
+                );
+            }
         );
-    });
 
+        /*
+        ==============================================
+        DESCONECTOU
+        ==============================================
+        */
 
-    // ==================================================
-    // DESCONECTOU
-    // ==================================================
+        socket.on(
+            'disconnect',
+            reason => {
 
-    socket.on('disconnect', () => {
+                const username =
+                    activeUsers[
+                        socket.id
+                    ];
 
-        const username =
-            activeUsers[socket.id];
+                console.log(
+                    'Socket desconectado:',
+                    username || socket.id,
+                    reason
+                );
 
-        if (socket.callRoom) {
+                if (
+                    socket.callRoom
+                ) {
 
-            socket.to(
-                socket.callRoom
-            ).emit('hang-up');
+                    socket.to(
+                        socket.callRoom
+                    ).emit(
+                        'hang-up'
+                    );
+                }
 
+                delete activeUsers[
+                    socket.id
+                ];
+            }
+        );
+    }
+);
+
+/*
+======================================================
+ HEALTH CHECK
+======================================================
+*/
+
+app.get(
+    '/health',
+    (req, res) => {
+
+        res.json({
+
+            success: true,
+
+            server: 'Meu Discord',
+
+            status: 'online',
+
+            time:
+                new Date().toISOString()
+
+        });
+    }
+);
+
+/*
+======================================================
+ 404
+======================================================
+*/
+
+app.use(
+    (req, res) => {
+
+        res.status(404).json({
+
+            success: false,
+
+            message:
+                'Rota não encontrada.',
+
+            path:
+                req.path
+
+        });
+    }
+);
+
+/*
+======================================================
+ ERROS
+======================================================
+*/
+
+app.use(
+    (err, req, res, next) => {
+
+        console.error(
+            'Erro Express:',
+            err
+        );
+
+        if (
+            res.headersSent
+        ) {
+            return next(err);
         }
 
-        delete activeUsers[socket.id];
-    });
+        res.status(500).json({
 
-});
+            success: false,
 
+            message:
+                'Erro interno do servidor.'
 
-// ======================================================
-// SERVIDOR
-// ======================================================
+        });
+    }
+);
 
-const PORT =
-    process.env.PORT || 3000;
+/*
+======================================================
+ SERVIDOR
+======================================================
+*/
 
 server.listen(
     PORT,
@@ -1140,7 +2008,31 @@ server.listen(
     () => {
 
         console.log(
-            `Servidor rodando na porta ${PORT}`
+            '======================================'
+        );
+
+        console.log(
+            'Meu Discord iniciado'
+        );
+
+        console.log(
+            `Porta: ${PORT}`
+        );
+
+        console.log(
+            `Frontend: ${FRONTEND_URL}`
+        );
+
+        console.log(
+            'Socket.IO: ativo'
+        );
+
+        console.log(
+            'CORS: configurado'
+        );
+
+        console.log(
+            '======================================'
         );
 
     }
