@@ -1126,9 +1126,10 @@ body.fullscreen-active {
             >
 
             <button
-                class="profile-btn"
-                onclick="document.getElementById('avatar-file-input').click()"
-            >
+    class="profile-btn"
+    type="button"
+    onclick="openAvatarPicker()"
+>
                 📷 Mudar Foto
             </button>
 
@@ -1735,66 +1736,97 @@ async function loadMyProfile() {
 
 }
 
+function openAvatarPicker() {
 
-function uploadAvatar(event) {
+    const input =
+        document.getElementById('avatar-file-input');
 
-    const file =
-        event.target.files[0];
+    if (!input) {
+        console.error('Input da foto não encontrado.');
+        return;
+    }
 
-    if (!file) return;
+    input.value = '';
 
-    const reader =
-        new FileReader();
+    input.click();
+}
+    
+async function uploadAvatar(event) {
 
-    reader.onload =
-        async function(e) {
+    const input = event.target;
+    const file = input.files && input.files[0];
 
-            const base64Image =
-                e.target.result;
+    if (!file) {
+        return;
+    }
 
-            const res =
-                await fetch(
-                    '/update-avatar',
-                    {
-                        method: 'POST',
+    if (!file.type.startsWith('image/')) {
+        alert('Selecione uma imagem.');
+        input.value = '';
+        return;
+    }
 
-                        headers: {
-                            'Content-Type':
-                                'application/json'
-                        },
+    try {
 
-                        body: JSON.stringify({
+        const formData = new FormData();
 
-                            username:
-                                currentUser,
+        formData.append('avatar', file);
 
-                            avatar:
-                                base64Image
+        const response = await fetch('/upload-avatar', {
+            method: 'POST',
+            body: formData
+        });
 
-                        })
-                    }
-                );
+        if (!response.ok) {
+            throw new Error('Erro ao enviar a imagem.');
+        }
 
-            if (res.ok) {
+        const data = await response.json();
 
-                loadMyProfile();
-                loadFriends();
+        if (data.avatar) {
 
-                showToast(
-                    'Foto de perfil alterada!'
-                );
+            // Atualiza a foto na tela
+            document.querySelectorAll(
+                '.profile-avatar, .avatar'
+            ).forEach(img => {
 
-            } else {
+                if (img.tagName === 'IMG') {
+                    img.src =
+                        data.avatar +
+                        '?t=' +
+                        Date.now();
+                }
 
-                alert(
-                    'Erro ao alterar foto.'
-                );
+            });
 
-            }
+            showToast('Foto de perfil atualizada!');
 
-        };
+        } else {
 
-    reader.readAsDataURL(file);
+            throw new Error(
+                'O servidor não retornou a nova foto.'
+            );
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            'Erro ao enviar avatar:',
+            error
+        );
+
+        alert(
+            'Não foi possível alterar a foto.\n\n' +
+            error.message
+        );
+
+    } finally {
+
+        // Permite selecionar a mesma foto novamente
+        input.value = '';
+
+    }
 
 }
 
@@ -2647,9 +2679,24 @@ async function setupPeerConnection() {
 
                 try {
 
-                    await audio.play();
+    audio.autoplay = true;
+    audio.muted = false;
+    audio.volume = 1.0;
 
-                } catch {}
+    await audio.play();
+
+    console.log(
+        'ÁUDIO REMOTO INICIADO COM SUCESSO'
+    );
+
+} catch (error) {
+
+    console.error(
+        'ERRO AO REPRODUZIR ÁUDIO REMOTO:',
+        error
+    );
+
+}
 
             }
 
