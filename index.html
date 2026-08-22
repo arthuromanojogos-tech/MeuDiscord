@@ -1,1646 +1,408 @@
+```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 
 <title>Meu Discord</title>
 
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+
 <style>
-
-* {
-    box-sizing: border-box;
-}
-
-html,
-body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    background: #313338;
-    color: #dbdee1;
-}
-
-body {
-    display: flex;
-}
-
-/* =====================================================
-   SIDEBAR
-===================================================== */
-
-.sidebar {
-    width: 280px;
-    height: 100vh;
-    flex-shrink: 0;
-    background: #2b2d31;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid #1f2023;
-    z-index: 100;
-}
-
-.sidebar-header {
-    padding: 16px;
-    border-bottom: 1px solid #1f2023;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.user-profile-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.user-profile-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    overflow: hidden;
-}
-
-.avatar-img {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.avatar-placeholder {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #5865f2;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 17px;
-    flex-shrink: 0;
-}
-
-.user-profile-info span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 16px;
-    color: #f2f3f5;
-    font-weight: bold;
-}
-
-.user-actions {
-    display: flex;
-    gap: 6px;
-    width: 100%;
-}
-
-.profile-btn,
-.logout-btn {
-    border: none;
-    padding: 7px 10px;
-    color: white;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-}
-
-.profile-btn {
-    background: #4e5058;
-    flex: 1;
-}
-
-.profile-btn:hover {
-    background: #6d6f78;
-}
-
-.logout-btn {
-    background: #ed4245;
-}
-
-.logout-btn:hover {
-    background: #c9383b;
-}
-
-.friends-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px;
-}
-
-.section-title {
-    padding: 10px 5px 5px;
-    font-size: 11px;
-    font-weight: bold;
-    color: #949ba4;
-    text-transform: uppercase;
+*{box-sizing:border-box}
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    font-family:Arial,sans-serif;
+    background:#313338;
+    color:#fff
 }
-
-.friend-item {
-    padding: 10px 12px;
-    margin-bottom: 5px;
-    border-radius: 4px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #35373c;
-    gap: 10px;
-    cursor: pointer;
-    user-select: none;
-}
-
-.friend-item:hover {
-    background: #3f4248;
-}
-
-.friend-item.active {
-    background: #404249;
-    border-left: 4px solid #5865f2;
-}
-
-.friend-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-    overflow: hidden;
-}
-
-.friend-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 16px;
-}
-
-.unread-badge {
-    background: #ed4245;
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
-    padding: 2px 6px;
-    border-radius: 10px;
-    min-width: 18px;
-    text-align: center;
-}
-
-.action-btns {
-    display: flex;
-    gap: 5px;
-    z-index: 2;
-}
-
-.btn-accept,
-.btn-remove {
-    border: none;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-}
-
-.btn-accept {
-    background: #248046;
-}
-
-.btn-remove {
-    background: #ed4245;
-}
-
-.no-friends {
-    padding: 15px;
-    text-align: center;
-    color: #949ba4;
-    font-size: 14px;
-}
-
-.add-section {
-    padding: 15px;
-    border-top: 1px solid #1f2023;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.add-section input {
-    border: none;
-    padding: 10px;
-    border-radius: 4px;
-    background: #1e1f22;
-    color: white;
-    outline: none;
-    font-size: 14px;
-}
-
-.add-section button {
-    background: #5865f2;
-    border: none;
-    padding: 10px;
-    color: white;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 14px;
+button,input{
+    font:inherit
 }
-
-/* =====================================================
-   CHAT
-===================================================== */
-
-.chat-area {
-    flex: 1;
-    min-width: 0;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: #313338;
-    position: relative;
+button{
+    border:0;
+    cursor:pointer
 }
 
-.chat-body-wrapper {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    overflow: hidden;
+#app{
+    width:100%;
+    height:100%;
+    display:flex;
+    flex-direction:column
 }
 
-.chat-main-pane {
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+header{
+    height:60px;
+    min-height:60px;
+    background:#1e1f22;
+    display:flex;
+    align-items:center;
+    padding:8px 12px;
+    gap:10px
 }
 
-.chat-header {
-    min-height: 68px;
-    padding: 12px 20px;
-    background: #313338;
-    border-bottom: 1px solid #1f2023;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 17px;
-    gap: 10px;
+#my-avatar{
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    background:#5865f2;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    font-weight:bold
 }
 
-.chat-header-info {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    overflow: hidden;
+#my-avatar img{
+    width:100%;
+    height:100%;
+    object-fit:cover
 }
 
-.chat-header-info span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+#username{
+    font-weight:bold;
+    flex:1
 }
 
-.messages {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    list-style: none;
-    margin: 0;
+#status{
+    font-size:12px;
+    color:#23a559
 }
 
-.message-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 15px;
-    word-break: break-word;
+main{
+    flex:1;
+    min-height:0;
+    display:flex
 }
 
-.message-content {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    min-width: 0;
+#friends{
+    width:100%;
+    overflow-y:auto;
+    background:#2b2d31
 }
 
-.msg-header-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+#friends.hidden{
+    display:none
 }
 
-.msg-user {
-    font-weight: bold;
-    color: #fff;
-    font-size: 17px;
+.section{
+    padding:15px
 }
 
-.msg-text {
-    color: #dbdee1;
-    font-size: 17px;
-    line-height: 1.4;
+.section h3{
+    margin:0 0 12px;
+    font-size:15px;
+    color:#b5bac1
 }
 
-.chat-form {
-    padding: 18px 24px;
-    background: #313338;
-    display: flex;
-    gap: 12px;
+.add{
+    display:flex;
+    gap:7px
 }
 
-.chat-form input {
-    border: none;
-    padding: 14px;
-    min-width: 0;
-    flex: 1;
-    border-radius: 8px;
-    background: #383a40;
-    color: white;
-    outline: none;
-    font-size: 17px;
+.add input{
+    min-width:0;
+    flex:1;
+    padding:11px;
+    border:0;
+    outline:0;
+    border-radius:6px;
+    background:#1e1f22;
+    color:#fff
 }
 
-.chat-form button {
-    background: #5865f2;
-    border: none;
-    padding: 0 24px;
-    color: white;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 16px;
+.add button{
+    padding:0 14px;
+    border-radius:6px;
+    background:#5865f2;
+    color:#fff
 }
 
-/* =====================================================
-   PAINEL PERFIL
-===================================================== */
-
-.friend-profile-panel {
-    width: 280px;
-    flex-shrink: 0;
-    background: #2b2d31;
-    border-left: 1px solid #1f2023;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 30px 20px;
-    text-align: center;
-    gap: 15px;
+.friend{
+    padding:12px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    border-radius:7px;
+    margin:4px 8px;
+    background:#313338
 }
 
-.profile-panel-remove-btn {
-    background: #ed4245;
-    color: white;
-    border: none;
-    padding: 9px 15px;
-    border-radius: 6px;
-    cursor: pointer;
+.friend:active{
+    background:#404249
 }
-
-/* =====================================================
-   BOTÕES CALL
-===================================================== */
 
-.call-btn,
-.hangup-btn,
-.screen-btn {
-    border: none;
-    color: white;
-    padding: 8px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 14px;
-    display: none;
-    white-space: nowrap;
-}
-
-.call-btn {
-    background: #248046;
+.avatar{
+    width:42px;
+    height:42px;
+    min-width:42px;
+    border-radius:50%;
+    background:#5865f2;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    font-weight:bold
 }
-
-.hangup-btn {
-    background: #ed4245;
-}
-
-.screen-btn {
-    background: #5865f2;
-}
-
-/* =====================================================
-   CALL BANNER
-===================================================== */
-
-.call-status-banner {
-    background: #111214;
-    color: #248046;
-    padding: 8px 24px;
-    font-size: 14px;
-    font-weight: bold;
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid #1f2023;
-}
-
-.call-dot {
-    width: 10px;
-    height: 10px;
-    background: #248046;
-    border-radius: 50%;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    50% {
-        opacity: .4;
-    }
-}
-
-/* =====================================================
-   TRANSMISSÃO
-===================================================== */
 
-#screen-share-container {
-    display: none;
-    position: relative;
-    background: #000;
-    padding: 10px;
-    text-align: center;
-    border-bottom: 1px solid #1f2023;
-    min-height: 220px;
+.avatar img{
+    width:100%;
+    height:100%;
+    object-fit:cover
 }
 
-#remote-screen {
-    display: block;
-    width: 100%;
-    height: auto;
-    max-height: 65vh;
-    min-height: 200px;
-    background: #000;
-    border-radius: 6px;
-    object-fit: contain;
+.friend-name{
+    flex:1;
+    overflow:hidden;
+    text-overflow:ellipsis
 }
 
-.fullscreen-btn {
-    position: absolute;
-    right: 20px;
-    bottom: 20px;
-    background: rgba(0,0,0,.75);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 9px 13px;
-    cursor: pointer;
-    font-size: 18px;
-    z-index: 5;
+.friend button{
+    background:#5865f2;
+    color:#fff;
+    padding:7px 10px;
+    border-radius:5px;
 }
 
-.screen-quality-panel {
-    position: absolute;
-    left: 20px;
-    bottom: 20px;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(0,0,0,.78);
-    padding: 8px 10px;
-    border-radius: 6px;
+.pending button{
+    background:#23a559
 }
 
-.screen-quality-panel label {
-    color: white;
-    font-size: 13px;
-    font-weight: bold;
+#chat{
+    display:none;
+    width:100%;
+    height:100%;
+    flex-direction:column;
+    background:#313338
 }
 
-#screen-quality {
-    background: #2b2d31;
-    color: white;
-    border: 1px solid #4e5058;
-    border-radius: 5px;
-    padding: 6px 8px;
-    outline: none;
-    cursor: pointer;
+#chat.show{
+    display:flex
 }
-
-/* =====================================================
-   MODAIS
-===================================================== */
 
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.72);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    padding: 20px;
+.chat-header{
+    height:60px;
+    min-height:60px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 12px;
+    background:#1e1f22
 }
 
-.call-modal {
-    width: 360px;
-    max-width: 100%;
-    background: #2b2d31;
-    border-radius: 16px;
-    padding: 28px;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+#back{
+    background:none;
+    color:#fff;
+    font-size:25px;
+    padding:5px
 }
 
-.call-modal h2 {
-    margin: 8px 0;
-    color: white;
+#chat-user{
+    font-weight:bold
 }
 
-.call-modal p {
-    color: #b5bac1;
-    margin: 8px 0 22px;
+#messages{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    padding:12px
 }
 
-.call-modal-avatar {
-    margin-bottom: 15px;
+.message{
+    display:flex;
+    gap:9px;
+    margin-bottom:12px
 }
 
-.call-buttons {
-    display: flex;
-    gap: 12px;
+.message-body{
+    min-width:0
 }
 
-.call-buttons button {
-    flex: 1;
-    border: none;
-    padding: 13px;
-    border-radius: 8px;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 15px;
+.message-user{
+    font-size:13px;
+    font-weight:bold;
+    color:#c9cdfb
 }
 
-.accept-call {
-    background: #248046;
+.message-text{
+    word-wrap:break-word;
+    white-space:pre-wrap
 }
 
-.reject-call,
-.cancel-call {
-    background: #ed4245;
+#send-area{
+    display:flex;
+    gap:7px;
+    padding:10px;
+    background:#1e1f22
 }
 
-.calling-spinner {
-    width: 42px;
-    height: 42px;
-    border: 4px solid #4e5058;
-    border-top-color: #5865f2;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 18px;
+#message-input{
+    flex:1;
+    min-width:0;
+    padding:12px;
+    border:0;
+    outline:0;
+    border-radius:7px;
+    background:#383a40;
+    color:#fff
 }
 
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+#send{
+    width:50px;
+    border-radius:7px;
+    background:#5865f2;
+    color:#fff;
+    font-size:20px
 }
 
-.toast {
-    position: fixed;
-    right: 20px;
-    bottom: 20px;
-    background: #111214;
-    color: white;
-    padding: 12px 18px;
-    border-radius: 8px;
-    display: none;
-    z-index: 10000;
+#empty{
+    text-align:center;
+    color:#949ba4;
+    padding:30px 15px
 }
 
-/* =====================================================
-   BOTÃO MOBILE
-===================================================== */
-
-.mobile-back-btn {
-    display: none;
-    border: none;
-    background: transparent;
-    color: white;
-    font-size: 25px;
-    cursor: pointer;
-    padding: 4px 8px;
+.toast{
+    position:fixed;
+    left:50%;
+    bottom:75px;
+    transform:translateX(-50%);
+    background:#111;
+    padding:10px 15px;
+    border-radius:7px;
+    display:none;
+    z-index:99;
+    max-width:90%;
+    text-align:center
 }
-
-/* =====================================================
-   MOBILE
-===================================================== */
-
-@media (max-width: 768px) {
 
-    body {
-        position: relative;
-        width: 100%;
-        height: 100dvh;
+@media(min-width:700px){
+    #friends{
+        width:320px
     }
 
-    .sidebar {
-        position: fixed;
-        inset: 0;
-        width: 100%;
-        height: 100dvh;
-        transform: translateX(0);
-        transition: transform .25s ease;
-        z-index: 1000;
+    #chat{
+        display:flex
     }
 
-    .sidebar.mobile-hidden {
-        transform: translateX(-100%);
+    #back{
+        display:none
     }
-
-    .chat-area {
-        width: 100%;
-        height: 100dvh;
-        min-width: 0;
-    }
-
-    .chat-area.mobile-hidden {
-        display: none;
-    }
-
-    .chat-header {
-        min-height: 60px;
-        padding: 8px 10px;
-        gap: 5px;
-    }
-
-    .mobile-back-btn {
-        display: block;
-        flex-shrink: 0;
-    }
-
-    .chat-header-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .chat-header-info .avatar-img,
-    .chat-header-info .avatar-placeholder {
-        width: 36px;
-        height: 36px;
-    }
-
-    .chat-header-info .avatar-placeholder {
-        font-size: 15px;
-    }
-
-    .chat-header-info span {
-        font-size: 15px;
-    }
-
-    .chat-header > div:last-child {
-        gap: 4px !important;
-        flex-shrink: 0;
-    }
-
-    .call-btn,
-    .hangup-btn,
-    .screen-btn {
-        padding: 8px;
-        font-size: 0;
-        width: 40px;
-        height: 40px;
-        display: none;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .call-btn {
-        font-size: 20px;
-    }
-
-    .hangup-btn {
-        font-size: 19px;
-    }
-
-    .screen-btn {
-        font-size: 19px;
-    }
-
-    .messages {
-        padding: 15px 12px;
-        gap: 15px;
-    }
-
-    .message-row {
-        gap: 10px;
-    }
-
-    .message-row .avatar-img,
-    .message-row .avatar-placeholder {
-        width: 36px;
-        height: 36px;
-    }
-
-    .message-row .avatar-placeholder {
-        font-size: 15px;
-    }
-
-    .msg-user {
-        font-size: 15px;
-    }
-
-    .msg-text {
-        font-size: 15px;
-    }
-
-    .chat-form {
-        padding: 8px;
-        padding-bottom: max(8px, env(safe-area-inset-bottom));
-        gap: 6px;
-    }
-
-    .chat-form input {
-        font-size: 16px;
-        padding: 12px;
-    }
-
-    .chat-form button {
-        padding: 0 14px;
-        font-size: 14px;
-    }
-
-    .friend-profile-panel {
-        display: none !important;
-    }
-
-    .call-status-banner {
-        padding: 7px 12px;
-        font-size: 12px;
-    }
-
-    #screen-share-container {
-        padding: 5px;
-        min-height: 180px;
-    }
-
-    #remote-screen {
-        width: 100%;
-        min-height: 150px;
-        max-height: 55vh;
-        border-radius: 4px;
-    }
-
-    .fullscreen-btn {
-        right: 10px;
-        bottom: 10px;
-        padding: 8px 11px;
-        font-size: 17px;
-    }
-
-    .screen-quality-panel {
-        left: 10px;
-        bottom: 10px;
-        padding: 5px 7px;
-        gap: 4px;
-    }
-
-    .screen-quality-panel label {
-        display: none;
-    }
-
-    #screen-quality {
-        font-size: 12px;
-        padding: 5px;
-    }
-
-    .call-modal {
-        width: 100%;
-        max-width: 340px;
-        padding: 22px;
-    }
-
-    .call-buttons {
-        flex-direction: column;
-    }
-
-    .call-buttons button {
-        min-height: 48px;
-    }
-
-    .toast {
-        left: 15px;
-        right: 15px;
-        bottom: calc(15px + env(safe-area-inset-bottom));
-        text-align: center;
-    }
-
 }
-
-/* =====================================================
-   CELULARES PEQUENOS
-===================================================== */
-
-@media (max-width: 420px) {
-
-    .sidebar-header {
-        padding: 12px;
-    }
-
-    .friends-container {
-        padding: 7px;
-    }
-
-    .friend-item {
-        padding: 10px;
-    }
-
-    .friend-name {
-        font-size: 15px;
-    }
-
-    .add-section {
-        padding: 10px;
-    }
-
-    .chat-header {
-        min-height: 56px;
-    }
-
-    .chat-form button {
-        font-size: 0;
-        width: 45px;
-        padding: 0;
-    }
-
-    .chat-form button::after {
-        content: "➤";
-        font-size: 19px;
-    }
-
-}
-
-/* =====================================================
-   FULLSCREEN NATIVO
-===================================================== */
-
-#screen-share-container:fullscreen {
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    min-height: 100vh;
-    min-height: 100dvh;
-    padding: 0;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    background: #000;
-}
-
-#screen-share-container:fullscreen #remote-screen {
-    width: 100%;
-    height: 100%;
-    max-width: 100vw;
-    max-height: 100vh;
-    max-height: 100dvh;
-    min-height: 0;
-    border-radius: 0;
-    object-fit: contain;
-}
-
-#screen-share-container:fullscreen .fullscreen-btn {
-    right: 20px;
-    bottom: 20px;
-}
-
-#screen-share-container:fullscreen .screen-quality-panel {
-    left: 20px;
-    bottom: 20px;
-}
-
-/* =====================================================
-   FULLSCREEN MOBILE FALLBACK
-===================================================== */
-
-body.fullscreen-active {
-    overflow: hidden !important;
-}
-
-#screen-share-container.mobile-fullscreen {
-    position: fixed !important;
-    inset: 0 !important;
-
-    width: 100vw !important;
-
-    height: 100vh !important;
-    height: 100dvh !important;
-
-    min-height: 100vh !important;
-    min-height: 100dvh !important;
-
-    background: #000 !important;
-
-    z-index: 999999 !important;
-
-    display: flex !important;
-
-    align-items: center !important;
-    justify-content: center !important;
-
-    padding: 0 !important;
-
-    border: none !important;
-}
-
-#screen-share-container.mobile-fullscreen #remote-screen {
-
-    width: 100vw !important;
-
-    height: 100vh !important;
-    height: 100dvh !important;
-
-    max-width: 100vw !important;
-
-    max-height: 100vh !important;
-    max-height: 100dvh !important;
-
-    min-width: 0 !important;
-    min-height: 0 !important;
-
-    object-fit: contain !important;
-
-    background: #000 !important;
-
-    border-radius: 0 !important;
-}
-
-#screen-share-container.mobile-fullscreen .fullscreen-btn {
-
-    position: fixed !important;
-
-    right: 15px !important;
-    bottom: 15px !important;
-
-    z-index: 1000001 !important;
-
-    width: 48px !important;
-    height: 48px !important;
-
-    padding: 0 !important;
-
-    display: flex !important;
-
-    align-items: center !important;
-    justify-content: center !important;
-
-    background: rgba(0,0,0,.75) !important;
-
-    border: 1px solid rgba(255,255,255,.2) !important;
-
-    border-radius: 50% !important;
-
-    font-size: 22px !important;
-}
-
-#screen-share-container.mobile-fullscreen .screen-quality-panel {
-
-    position: fixed !important;
-
-    left: 15px !important;
-    bottom: 15px !important;
-
-    z-index: 1000001 !important;
-
-    background: rgba(0,0,0,.75) !important;
-}
-
-/* =====================================================
-   iOS VIDEO
-===================================================== */
-
-#remote-screen {
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-}
-
-/* =====================================================
-   LANDSCAPE MOBILE
-===================================================== */
-
-@media (max-width: 900px) and (orientation: landscape) {
-
-    .chat-header {
-        min-height: 50px;
-    }
-
-    #remote-screen {
-        max-height: 70vh;
-    }
-
-    .messages {
-        padding: 10px;
-    }
-
-    .chat-form {
-        padding: 5px;
-    }
-
-    #screen-share-container.mobile-fullscreen #remote-screen {
-
-        width: 100vw !important;
-        height: 100dvh !important;
-
-        object-fit: contain !important;
-
-    }
-
-}
-
-/* =====================================================
-   FULLSCREEN MOBILE CONTROLES
-===================================================== */
-
-@media (max-width: 768px) {
-
-    #screen-share-container.mobile-fullscreen .screen-quality-panel {
-
-        left: 10px !important;
-        bottom: 10px !important;
-
-    }
-
-    #screen-share-container.mobile-fullscreen .fullscreen-btn {
-
-        right: 10px !important;
-        bottom: 10px !important;
-
-    }
-
-}
-
 </style>
 </head>
 
 <body>
 
-<!-- =====================================================
-     SIDEBAR
-===================================================== -->
+<div id="app">
 
-<div class="sidebar" id="sidebar">
+<header>
+    <div id="my-avatar">?</div>
+    <div id="username">Carregando...</div>
+    <div id="status">● online</div>
+</header>
 
-    <div class="sidebar-header">
+<main>
 
-        <div class="user-profile-row">
+<section id="friends">
 
-            <div class="user-profile-info">
+    <div class="section">
 
-                <div id="my-avatar-container"></div>
+        <h3>ADICIONAR AMIGO</h3>
 
-                <span id="username-display">
-                    Carregando...
-                </span>
-
-            </div>
-
-        </div>
-
-        <div class="user-actions">
-
-            <input
-                type="file"
-                id="avatar-file-input"
-                accept="image/*"
-                style="display:none"
-                onchange="uploadAvatar(event)"
-            >
-
-            <button
-                class="profile-btn"
-                onclick="document.getElementById('avatar-file-input').click()"
-            >
-                📷 Mudar Foto
-            </button>
-
-            <button
-                class="logout-btn"
-                onclick="logout()"
-            >
-                Sair
-            </button>
-
+        <div class="add">
+            <input id="friend-input" placeholder="Nome do usuário">
+            <button onclick="addFriend()">+</button>
         </div>
 
     </div>
 
-    <div
-        class="friends-container"
-        id="friends-container"
-    ></div>
-
-    <div class="add-section">
-
-        <input
-            id="new-friend-input"
-            placeholder="Adicionar por nome..."
-        >
-
-        <button onclick="addFriend()">
-            ➕ Adicionar Amigo
-        </button>
-
+    <div class="section">
+        <h3>PEDIDOS</h3>
+        <div id="pending"></div>
     </div>
 
-</div>
+    <div class="section">
+        <h3>AMIGOS</h3>
+        <div id="friend-list">
+            <div id="empty">Carregando amigos...</div>
+        </div>
+    </div>
 
-<!-- =====================================================
-     CHAT
-===================================================== -->
+</section>
 
-<div class="chat-area mobile-hidden" id="chat-area">
+<section id="chat">
 
     <div class="chat-header">
+        <button id="back" onclick="closeChat()">‹</button>
 
-        <button
-            id="mobile-back-btn"
-            class="mobile-back-btn"
-            onclick="mobileBackToFriends()"
-        >
-            ←
-        </button>
+        <div id="chat-avatar" class="avatar">?</div>
 
-        <div
-            class="chat-header-info"
-            id="chat-header-info"
-        >
-            <span>
-                Selecione um amigo para conversar
-            </span>
-        </div>
-
-        <div style="display:flex;gap:8px;">
-
-            <button
-                id="screen-action-btn"
-                class="screen-btn"
-                onclick="toggleScreenShare()"
-            >
-                🖥️ Compartilhar Tela
-            </button>
-
-            <button
-                id="call-action-btn"
-                class="call-btn"
-                onclick="startCall()"
-            >
-                📞 Ligar
-            </button>
-
-            <button
-                id="hangup-action-btn"
-                class="hangup-btn"
-                onclick="endCall()"
-            >
-                📴 Desligar
-            </button>
-
-        </div>
-
+        <div id="chat-user">Chat</div>
     </div>
 
-    <div
-        id="call-banner"
-        class="call-status-banner"
-    >
+    <div id="messages"></div>
 
-        <div style="display:flex;align-items:center;gap:8px;">
-
-            <div class="call-dot"></div>
-
-            Chamada de voz em andamento...
-
-        </div>
-
-    </div>
-
-    <!-- =================================================
-         TRANSMISSÃO
-    ================================================= -->
-
-    <div id="screen-share-container">
-
-        <video
-            id="remote-screen"
-            autoplay
-            playsinline
-            webkit-playsinline
-        ></video>
-
-        <div class="screen-quality-panel">
-
-            <label for="screen-quality">
-                Qualidade:
-            </label>
-
-            <select id="screen-quality">
-
-                <option value="720">
-                    720p
-                </option>
-
-                <option value="1080" selected>
-                    1080p
-                </option>
-
-                <option value="1440">
-                    2K
-                </option>
-
-            </select>
-
-        </div>
-
-        <button
-            class="fullscreen-btn"
-            onclick="toggleFullscreen()"
-            title="Tela cheia"
+    <div id="send-area">
+        <input
+            id="message-input"
+            placeholder="Digite uma mensagem..."
+            autocomplete="off"
         >
-            ⛶
-        </button>
-
+        <button id="send" onclick="sendMessage()">➤</button>
     </div>
 
-    <div class="chat-body-wrapper">
+</section>
 
-        <div class="chat-main-pane">
-
-            <ul
-                id="messages"
-                class="messages"
-            ></ul>
-
-            <form
-                id="form"
-                class="chat-form"
-                style="display:none;"
-                onsubmit="sendMessage(event)"
-            >
-
-                <input
-                    id="message-input"
-                    autocomplete="off"
-                    placeholder="Conversar..."
-                    required
-                >
-
-                <button>
-                    Enviar
-                </button>
-
-            </form>
-
-        </div>
-
-        <div
-            id="friend-profile-panel"
-            class="friend-profile-panel"
-            style="display:none;"
-        >
-
-            <div id="panel-avatar-container"></div>
-
-            <div id="panel-name-display"></div>
-
-            <button
-                id="panel-remove-btn"
-                class="profile-panel-remove-btn"
-            >
-                Remover amizade
-            </button>
-
-        </div>
-
-    </div>
-
+</main>
 </div>
 
-<audio
-    id="remote-audio"
-    autoplay
-></audio>
-
-<!-- =====================================================
-     CHAMADA RECEBIDA
-===================================================== -->
-
-<div
-    id="incoming-call-modal"
-    class="modal-overlay"
->
-
-    <div class="call-modal">
-
-        <div
-            id="incoming-avatar"
-            class="call-modal-avatar"
-        ></div>
-
-        <h2 id="incoming-title">
-            Chamada recebida
-        </h2>
-
-        <p id="incoming-text">
-            está ligando para você
-        </p>
-
-        <div class="call-buttons">
-
-            <button
-                class="accept-call"
-                onclick="acceptIncomingCall()"
-            >
-                📞 Atender
-            </button>
-
-            <button
-                class="reject-call"
-                onclick="rejectIncomingCall()"
-            >
-                ❌ Recusar
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- =====================================================
-     CHAMANDO
-===================================================== -->
-
-<div
-    id="outgoing-call-modal"
-    class="modal-overlay"
->
-
-    <div class="call-modal">
-
-        <div class="calling-spinner"></div>
-
-        <h2>
-            Chamando...
-        </h2>
-
-        <p id="outgoing-text">
-            Aguardando a outra pessoa atender.
-        </p>
-
-        <div class="call-buttons">
-
-            <button
-                class="cancel-call"
-                onclick="cancelOutgoingCall()"
-            >
-                📴 Cancelar chamada
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-<div
-    id="toast"
-    class="toast"
-></div>
-
-<script src="/socket.io/socket.io.js"></script>
+<div id="toast" class="toast"></div>
 
 <script>
 
 /* =====================================================
-   USUÁRIO
+   SERVIDOR
 ===================================================== */
 
-const currentUser =
-    localStorage.getItem('chat_username');
-
-if (!currentUser) {
-    window.location.href = '/login.html';
-}
-
-document.getElementById(
-    'username-display'
-).innerText = currentUser;
-
-
-/* =====================================================
-   SOCKET
-===================================================== */
-
-const socket = io('https://meudiscord.onrender.com');
 const API_URL = 'https://meudiscord.onrender.com';
 
-socket.emit(
-    'register user',
-    currentUser
-);
+const socket = io(API_URL,{
+    transports:['websocket','polling'],
+    withCredentials:true
+});
 
 
 /* =====================================================
    ESTADO
 ===================================================== */
 
-let currentChatFriend = null;
-let currentRoom = null;
+let currentUser = '';
+let currentFriend = '';
+let currentRoom = '';
 
-const unreadCounts = {};
-
-let localStream = null;
-let screenStream = null;
-let peerConnection = null;
-
-let isInCall = false;
-let isCalling = false;
-let isIncomingPending = false;
-let isSharingScreen = false;
-
-let pendingIncomingOffer = null;
-
-let videoSender = null;
-let screenAudioSender = null;
-
-let pendingIceCandidates = [];
-
-let isMakingOffer = false;
+const $ = id => document.getElementById(id);
 
 
 /* =====================================================
-   MOBILE
+   MENSAGEM
 ===================================================== */
 
-function isMobile() {
+function toast(text){
 
-    return window.innerWidth <= 768;
+    const el = $('toast');
 
-}
+    el.textContent = text;
+    el.style.display = 'block';
 
-function mobileOpenChat() {
+    clearTimeout(window.toastTimer);
 
-    if (!isMobile()) {
-        return;
-    }
-
-    document
-        .getElementById('sidebar')
-        .classList
-        .add('mobile-hidden');
-
-    document
-        .getElementById('chat-area')
-        .classList
-        .remove('mobile-hidden');
-
-}
-
-function mobileBackToFriends() {
-
-    if (!isMobile()) {
-        return;
-    }
-
-    if (isInCall || isCalling) {
-
-        if (
-            !confirm(
-                'Você está em uma chamada. Deseja sair da conversa?'
-            )
-        ) {
-            return;
-        }
-
-        endCall();
-
-    }
-
-    document
-        .getElementById('sidebar')
-        .classList
-        .remove('mobile-hidden');
-
-    document
-        .getElementById('chat-area')
-        .classList
-        .add('mobile-hidden');
-
-}
-
-
-/* =====================================================
-   QUALIDADES
-===================================================== */
-
-const SCREEN_QUALITIES = {
-
-    "720": {
-        width: 1280,
-        height: 720,
-        bitrate: 2500000
-    },
-
-    "1080": {
-        width: 1920,
-        height: 1080,
-        bitrate: 6000000
-    },
-
-    "1440": {
-        width: 2560,
-        height: 1440,
-        bitrate: 12000000
-    }
-
-};
-
-function getSelectedScreenQuality() {
-
-    const select =
-        document.getElementById(
-            'screen-quality'
-        );
-
-    return SCREEN_QUALITIES[
-        select.value
-    ] || SCREEN_QUALITIES["1080"];
-
-}
-
-
-/* =====================================================
-   WEBRTC
-===================================================== */
-
-const rtcServers = {
-
-    iceServers: [
-
-        {
-            urls:
-                'stun:stun.l.google.com:19302'
-        },
-
-        {
-            urls:
-                'stun:stun1.l.google.com:19302'
-        }
-
-    ]
-
-};
-
-
-/* =====================================================
-   TOAST
-===================================================== */
-
-function showToast(text) {
-
-    const toast =
-        document.getElementById('toast');
-
-    toast.innerText =
-        text;
-
-    toast.style.display =
-        'block';
-
-    clearTimeout(
-        showToast.timer
-    );
-
-    showToast.timer =
-        setTimeout(
-            () => {
-
-                toast.style.display =
-                    'none';
-
-            },
-            3000
-        );
-
+    window.toastTimer = setTimeout(()=>{
+        el.style.display = 'none';
+    },2500);
 }
 
 
@@ -1648,48 +410,66 @@ function showToast(text) {
    AVATAR
 ===================================================== */
 
-function createAvatarHTML(
-    avatarData,
-    username,
-    isLarge = false
-) {
+function avatarHTML(avatar,username){
 
-    if (
-        avatarData &&
-        avatarData.trim() !== ''
-    ) {
-
-        return `
-            <img
-                ${
-                    isLarge
-                        ? 'style="width:90px;height:90px;border-radius:50%;object-fit:cover;"'
-                        : 'class="avatar-img"'
-                }
-                src="${avatarData}"
-                alt="Avatar"
-            >
-        `;
-
+    if(avatar){
+        return `<img src="${avatar}" alt="">`;
     }
 
-    const initial =
-        username
-            ? username.charAt(0).toUpperCase()
-            : '?';
+    return (username || '?')
+        .charAt(0)
+        .toUpperCase();
+}
 
-    return `
-        <div
-            ${
-                isLarge
-                    ? 'style="width:90px;height:90px;border-radius:50%;background:#5865f2;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:36px;margin:auto;"'
-                    : 'class="avatar-placeholder"'
+
+/* =====================================================
+   USUÁRIO
+===================================================== */
+
+async function loadMe(){
+
+    try{
+
+        const res = await fetch(
+            `${API_URL}/me`,
+            {
+                credentials:'include'
             }
-        >
-            ${initial}
-        </div>
-    `;
+        );
 
+        if(!res.ok){
+            throw new Error('Não autenticado');
+        }
+
+        const data = await res.json();
+
+        if(!data.loggedIn){
+            throw new Error('Não autenticado');
+        }
+
+        currentUser = data.username;
+
+        $('username').textContent = currentUser;
+
+        socket.emit(
+            'register user',
+            currentUser
+        );
+
+        await loadProfile();
+        await loadFriends();
+
+    }catch(error){
+
+        console.error(error);
+
+        $('username').textContent =
+            'Não conectado';
+
+        toast(
+            'Não foi possível conectar ao servidor.'
+        );
+    }
 }
 
 
@@ -1697,131 +477,31 @@ function createAvatarHTML(
    PERFIL
 ===================================================== */
 
-async function loadMyProfile() {
+async function loadProfile(){
 
-    try {
+    try{
 
-        const res =
-    await fetch(
-        `${API_URL}/user/${encodeURIComponent(currentUser)}`
-    );
+        const res = await fetch(
+            `${API_URL}/user/${encodeURIComponent(currentUser)}`,
+            {
+                credentials:'include'
+            }
+        );
 
-        const user =
-            res.ok
-                ? await res.json()
-                : {
-                    avatar: '',
-                    username: currentUser
-                };
+        if(!res.ok)return;
 
-        document.getElementById(
-            'my-avatar-container'
-        ).innerHTML =
-            createAvatarHTML(
+        const user = await res.json();
+
+        $('my-avatar').innerHTML =
+            avatarHTML(
                 user.avatar,
                 user.username
             );
 
-    } catch {
+    }catch(error){
 
-        document.getElementById(
-            'my-avatar-container'
-        ).innerHTML =
-            createAvatarHTML(
-                '',
-                currentUser
-            );
-
+        console.error(error);
     }
-
-}
-
-
-function uploadAvatar(event) {
-
-    const file =
-        event.target.files[0];
-
-    if (!file) return;
-
-    const reader =
-        new FileReader();
-
-    reader.onload =
-        async function(e) {
-
-            const base64Image =
-                e.target.result;
-
-            const res =
-    await fetch(
-        `${API_URL}/update-avatar`,
-        {
-            method: 'POST',
-
-            headers: {
-                'Content-Type':
-                    'application/json'
-            },
-
-                        body: JSON.stringify({
-
-                            username:
-                                currentUser,
-
-                            avatar:
-                                base64Image
-
-                        })
-                    }
-                );
-
-            if (res.ok) {
-
-                loadMyProfile();
-                loadFriends();
-
-                showToast(
-                    'Foto de perfil alterada!'
-                );
-
-            } else {
-
-                alert(
-                    'Erro ao alterar foto.'
-                );
-
-            }
-
-        };
-
-    reader.readAsDataURL(file);
-
-}
-
-
-/* =====================================================
-   LOGOUT
-===================================================== */
-
-function logout() {
-
-    if (
-        isInCall ||
-        isCalling
-    ) {
-
-        endCall();
-
-    }
-
-    localStorage.removeItem(
-        'chat_username'
-    );
-
-    window.location.href =
-        '/login.html';
-
 }
 
 
@@ -1829,429 +509,222 @@ function logout() {
    AMIGOS
 ===================================================== */
 
-async function loadFriends() {
+async function loadFriends(){
 
-    try {
+    if(!currentUser)return;
 
-        const res =
-    await fetch(
-        `${API_URL}/friends/${encodeURIComponent(currentUser)}`
-    );
+    try{
 
-        const data =
-            await res.json();
-
-        const container =
-            document.getElementById(
-                'friends-container'
-            );
-
-        container.innerHTML = '';
-
-
-        if (
-            data.pendingRequests &&
-            data.pendingRequests.length > 0
-        ) {
-
-            const title =
-                document.createElement(
-                    'div'
-                );
-
-            title.className =
-                'section-title';
-
-            title.innerText =
-                'Pedidos Pendentes';
-
-            container.appendChild(
-                title
-            );
-
-
-            data.pendingRequests.forEach(
-                user => {
-
-                    const div =
-                        document.createElement(
-                            'div'
-                        );
-
-                    div.className =
-                        'friend-item';
-
-                    div.innerHTML = `
-
-                        <div class="friend-info">
-
-                            ${createAvatarHTML(
-                                user.avatar,
-                                user.username
-                            )}
-
-                            <span class="friend-name">
-                                ${user.username}
-                            </span>
-
-                        </div>
-
-                        <div class="action-btns">
-
-                            <button
-                                class="btn-accept"
-                                onclick="event.stopPropagation();acceptFriend('${user.username}')"
-                            >
-                                Aceitar
-                            </button>
-
-                            <button
-                                class="btn-remove"
-                                onclick="event.stopPropagation();removeFriend('${user.username}')"
-                            >
-                                Recusar
-                            </button>
-
-                        </div>
-                    `;
-
-                    container.appendChild(
-                        div
-                    );
-
-                }
-            );
-
-        }
-
-
-        const title =
-            document.createElement(
-                'div'
-            );
-
-        title.className =
-            'section-title';
-
-        title.innerText =
-            'Mensagens Diretas';
-
-        container.appendChild(
-            title
-        );
-
-
-        if (
-            !data.friends ||
-            data.friends.length === 0
-        ) {
-
-            const noFriends =
-                document.createElement(
-                    'div'
-                );
-
-            noFriends.className =
-                'no-friends';
-
-            noFriends.innerText =
-                'Nenhum amigo adicionado.';
-
-            container.appendChild(
-                noFriends
-            );
-
-            return;
-
-        }
-
-
-        data.friends.forEach(
-            friend => {
-
-                const div =
-                    document.createElement(
-                        'div'
-                    );
-
-                div.className =
-                    'friend-item';
-
-
-                if (
-                    friend.username ===
-                    currentChatFriend
-                ) {
-
-                    div.classList.add(
-                        'active'
-                    );
-
-                }
-
-
-                const unread =
-                    unreadCounts[
-                        friend.username
-                    ] || 0;
-
-
-                div.innerHTML = `
-
-                    <div class="friend-info">
-
-                        ${createAvatarHTML(
-                            friend.avatar,
-                            friend.username
-                        )}
-
-                        <span class="friend-name">
-                            ${friend.username}
-                        </span>
-
-                    </div>
-
-                    <div
-                        class="unread-badge"
-                        style="${
-                            unread
-                                ? 'display:inline-block'
-                                : 'display:none'
-                        }"
-                    >
-                        ${unread}
-                    </div>
-
-                `;
-
-
-                div.onclick =
-                    () => {
-
-                        openChat(
-                            friend.username,
-                            friend.avatar || ''
-                        );
-
-                    };
-
-
-                container.appendChild(
-                    div
-                );
-
+        const res = await fetch(
+            `${API_URL}/friends/${encodeURIComponent(currentUser)}`,
+            {
+                credentials:'include'
             }
         );
 
-    } catch (error) {
+        if(!res.ok){
+            throw new Error('Erro ao carregar amigos');
+        }
 
-        console.error(
-            'Erro ao carregar amigos:',
-            error
-        );
+        const data = await res.json();
 
+        renderFriends(data.friends || []);
+        renderPending(data.pendingRequests || []);
+
+    }catch(error){
+
+        console.error(error);
+
+        $('friend-list').innerHTML =
+            '<div id="empty">Erro ao carregar amigos.</div>';
     }
-
 }
 
 
-async function addFriend() {
+function renderFriends(friends){
 
-    const input =
-        document.getElementById(
-            'new-friend-input'
-        );
+    const list = $('friend-list');
+
+    list.innerHTML = '';
+
+    if(!friends.length){
+
+        list.innerHTML =
+            '<div id="empty">Você ainda não possui amigos.</div>';
+
+        return;
+    }
+
+    friends.forEach(friend=>{
+
+        const div = document.createElement('div');
+
+        div.className = 'friend';
+
+        div.innerHTML = `
+            <div class="avatar">
+                ${avatarHTML(friend.avatar,friend.username)}
+            </div>
+
+            <div class="friend-name">
+                ${escapeHTML(friend.username)}
+            </div>
+
+            <button>
+                Abrir
+            </button>
+        `;
+
+        div.querySelector('button').onclick =
+            () => openChat(friend);
+
+        list.appendChild(div);
+
+    });
+}
+
+
+function renderPending(list){
+
+    const container = $('pending');
+
+    container.innerHTML = '';
+
+    if(!list.length){
+
+        container.innerHTML =
+            '<div style="color:#777">Nenhum pedido.</div>';
+
+        return;
+    }
+
+    list.forEach(friend=>{
+
+        const div = document.createElement('div');
+
+        div.className =
+            'friend pending';
+
+        div.innerHTML = `
+            <div class="avatar">
+                ${avatarHTML(friend.avatar,friend.username)}
+            </div>
+
+            <div class="friend-name">
+                ${escapeHTML(friend.username)}
+            </div>
+
+            <button>Aceitar</button>
+        `;
+
+        div.querySelector('button').onclick =
+            () => acceptFriend(friend.username);
+
+        container.appendChild(div);
+
+    });
+}
+
+
+/* =====================================================
+   ADICIONAR AMIGO
+===================================================== */
+
+async function addFriend(){
+
+    const input = $('friend-input');
 
     const friendName =
         input.value.trim();
 
-    if (!friendName) return;
-
-
-    const res =
-    await fetch(
-        `${API_URL}/add-friend`,
-        {
-            method: 'POST',
-
-            headers: {
-                'Content-Type':
-                    'application/json'
-            },
-
-                body: JSON.stringify({
-
-                    username:
-                        currentUser,
-
-                    friendName:
-                        friendName
-
-                })
-            }
-        );
-
-
-    if (res.ok) {
-
-        input.value = '';
-
-        socket.emit(
-            'notify update',
-            friendName
-        );
-
-        loadFriends();
-
-        showToast(
-            'Pedido de amizade enviado!'
-        );
-
-    } else {
-
-        alert(
-            await res.text()
-        );
-
-    }
-
-}
-
-
-async function acceptFriend(
-    friendName
-) {
-
-    const res =
-    await fetch(
-        `${API_URL}/accept-friend`,
-        {
-            method: 'POST',
-
-            headers: {
-                'Content-Type':
-                    'application/json'
-            },
-
-                body: JSON.stringify({
-
-                    username:
-                        currentUser,
-
-                    friendName:
-                        friendName
-
-                })
-            }
-        );
-
-
-    if (res.ok) {
-
-        socket.emit(
-            'notify update',
-            friendName
-        );
-
-        loadFriends();
-
-    } else {
-
-        alert(
-            'Erro ao aceitar pedido.'
-        );
-
-    }
-
-}
-
-
-async function removeFriend(
-    friendName
-) {
-
-    if (
-        !confirm(
-            `Deseja realmente remover ${friendName}?`
-        )
-    ) {
-
+    if(!friendName){
+        toast('Digite o nome do usuário.');
         return;
-
     }
 
+    try{
 
-    const res =
-    await fetch(
-        `${API_URL}/remove-friend`,
-        {
-            method: 'POST',
-
-            headers: {
-                'Content-Type':
-                    'application/json'
-            },
-
-                body: JSON.stringify({
-
-                    username:
-                        currentUser,
-
-                    friendName:
-                        friendName
-
+        const res = await fetch(
+            `${API_URL}/add-friend`,
+            {
+                method:'POST',
+                credentials:'include',
+                headers:{
+                    'Content-Type':
+                        'application/json'
+                },
+                body:JSON.stringify({
+                    friendName
                 })
             }
         );
 
+        const text = await res.text();
 
-    if (res.ok) {
+        toast(text);
 
-        if (
-            currentChatFriend ===
-            friendName
-        ) {
+        if(res.ok){
 
-            closeActiveChat();
+            input.value = '';
 
+            socket.emit(
+                'notify update',
+                friendName
+            );
+
+            await loadFriends();
         }
 
+    }catch(error){
 
-        delete unreadCounts[
-            friendName
-        ];
+        console.error(error);
 
-
-        socket.emit(
-            'notify update',
-            friendName
-        );
+        toast('Erro de conexão.');
+    }
+}
 
 
-        socket.emit(
-            'force close chat',
+/* =====================================================
+   ACEITAR
+===================================================== */
+
+async function acceptFriend(friendName){
+
+    try{
+
+        const res = await fetch(
+            `${API_URL}/accept-friend`,
             {
-
-                targetUser:
-                    friendName,
-
-                currentUser:
-                    currentUser
-
+                method:'POST',
+                credentials:'include',
+                headers:{
+                    'Content-Type':
+                        'application/json'
+                },
+                body:JSON.stringify({
+                    friendName
+                })
             }
         );
 
+        toast(await res.text());
 
-        loadFriends();
+        if(res.ok){
 
-    } else {
+            socket.emit(
+                'notify update',
+                friendName
+            );
 
-        alert(
-            'Erro ao remover amizade.'
-        );
+            await loadFriends();
+        }
 
+    }catch(error){
+
+        console.error(error);
+
+        toast('Erro de conexão.');
     }
-
 }
 
 
@@ -2259,2883 +732,267 @@ async function removeFriend(
    CHAT
 ===================================================== */
 
-function closeActiveChat() {
+async function openChat(friend){
 
-    if (
-        isInCall ||
-        isCalling
-    ) {
-
-        endCall();
-
-    } else {
-
-        cleanupCall(false);
-
-    }
-
-
-    currentChatFriend = null;
-    currentRoom = null;
-
-
-    document.getElementById(
-        'chat-header-info'
-    ).innerHTML = `
-        <span>
-            Selecione um amigo para conversar
-        </span>
-    `;
-
-
-    document.getElementById(
-        'call-action-btn'
-    ).style.display = 'none';
-
-
-    document.getElementById(
-        'hangup-action-btn'
-    ).style.display = 'none';
-
-
-    document.getElementById(
-        'screen-action-btn'
-    ).style.display = 'none';
-
-
-    document.getElementById(
-        'call-banner'
-    ).style.display = 'none';
-
-
-    document.getElementById(
-        'screen-share-container'
-    ).style.display = 'none';
-
-
-    document.getElementById(
-        'messages'
-    ).innerHTML = '';
-
-
-    document.getElementById(
-        'form'
-    ).style.display = 'none';
-
-
-    document.getElementById(
-        'friend-profile-panel'
-    ).style.display = 'none';
-
-}
-
-
-function openChat(
-    friend,
-    friendAvatar
-) {
-
-    if (
-        currentChatFriend &&
-        currentChatFriend !== friend &&
-        (
-            isInCall ||
-            isCalling
-        )
-    ) {
-
-        endCall();
-
-    }
-
-
-    currentChatFriend =
-        friend;
-
-    unreadCounts[friend] =
-        0;
-
-    loadFriends();
-
-
-    document.getElementById(
-        'chat-header-info'
-    ).innerHTML = `
-
-        ${createAvatarHTML(
-            friendAvatar,
-            friend
-        )}
-
-        <span>
-            ${friend}
-        </span>
-
-    `;
-
-
-    document.getElementById(
-        'call-action-btn'
-    ).style.display =
-        'block';
-
-
-    document.getElementById(
-        'hangup-action-btn'
-    ).style.display =
-        'none';
-
-
-    document.getElementById(
-        'screen-action-btn'
-    ).style.display =
-        'none';
-
-
-    document.getElementById(
-        'call-banner'
-    ).style.display =
-        'none';
-
-
-    document.getElementById(
-        'panel-avatar-container'
-    ).innerHTML =
-        createAvatarHTML(
-            friendAvatar,
-            friend,
-            true
-        );
-
-
-    document.getElementById(
-        'panel-name-display'
-    ).innerText =
-        friend;
-
-
-    document.getElementById(
-        'panel-remove-btn'
-    ).onclick =
-        () => removeFriend(friend);
-
-
-    document.getElementById(
-        'friend-profile-panel'
-    ).style.display =
-        'flex';
-
-
-    document.getElementById(
-        'form'
-    ).style.display =
-        'flex';
-
-
-    document.getElementById(
-        'messages'
-    ).innerHTML =
-        '';
-
+    currentFriend = friend.username;
 
     currentRoom =
-        [
-            currentUser,
-            friend
-        ]
+        [currentUser,currentFriend]
         .sort()
         .join('_');
 
+    $('friends').classList.add('hidden');
+    $('chat').classList.add('show');
+
+    $('chat-user').textContent =
+        currentFriend;
+
+    $('chat-avatar').innerHTML =
+        avatarHTML(
+            friend.avatar,
+            friend.username
+        );
+
+    $('messages').innerHTML = '';
 
     socket.emit(
         'join room',
         currentRoom
     );
-
-
-    mobileOpenChat();
-
-
-    setTimeout(() => {
-
-        document
-            .getElementById('message-input')
-            ?.focus();
-
-    }, 150);
-
 }
 
 
-function sendMessage(e) {
+function closeChat(){
 
-    e.preventDefault();
+    currentFriend = '';
+    currentRoom = '';
 
-    const input =
-        document.getElementById(
-            'message-input'
-        );
+    $('chat').classList.remove('show');
+    $('friends').classList.remove('hidden');
 
-
-    if (
-        !input.value ||
-        !currentChatFriend ||
-        !currentRoom
-    ) {
-
-        return;
-
-    }
-
-
-    socket.emit(
-        'private message',
-        {
-
-            sender:
-                currentUser,
-
-            receiver:
-                currentChatFriend,
-
-            message:
-                input.value,
-
-            room:
-                currentRoom
-
-        }
-    );
-
-
-    input.value = '';
-
+    $('messages').innerHTML = '';
 }
-
-
-/* =====================================================
-   PEER CONNECTION
-===================================================== */
-
-async function setupPeerConnection() {
-
-    if (peerConnection) {
-
-        try {
-            peerConnection.close();
-        } catch {}
-
-    }
-
-
-    pendingIceCandidates = [];
-
-
-    peerConnection =
-        new RTCPeerConnection(
-            rtcServers
-        );
-
-
-    if (localStream) {
-
-        localStream
-            .getAudioTracks()
-            .forEach(
-                track => {
-
-                    peerConnection.addTrack(
-                        track,
-                        localStream
-                    );
-
-                }
-            );
-
-    }
-
-
-    peerConnection.ontrack =
-        async event => {
-
-            const stream =
-                event.streams &&
-                event.streams[0];
-
-
-            if (!stream) {
-                return;
-            }
-
-
-            if (
-                event.track.kind ===
-                'video'
-            ) {
-
-                const video =
-                    document.getElementById(
-                        'remote-screen'
-                    );
-
-
-                video.srcObject =
-                    stream;
-
-
-                document.getElementById(
-                    'screen-share-container'
-                ).style.display =
-                    'block';
-
-
-                try {
-
-                    await video.play();
-
-                } catch (error) {
-
-                    console.warn(
-                        'Autoplay bloqueado:',
-                        error
-                    );
-
-                }
-
-
-                event.track.onended =
-                    () => {
-
-                        if (
-                            video.srcObject ===
-                            stream
-                        ) {
-
-                            video.srcObject =
-                                null;
-
-                        }
-
-
-                        hideRemoteScreen();
-
-                    };
-
-            }
-
-
-            if (
-                event.track.kind ===
-                'audio'
-            ) {
-
-                const audio =
-                    document.getElementById(
-                        'remote-audio'
-                    );
-
-
-                if (
-                    audio.srcObject !==
-                    stream
-                ) {
-
-                    audio.srcObject =
-                        stream;
-
-                }
-
-
-                try {
-
-                    await audio.play();
-
-                } catch {}
-
-            }
-
-        };
-
-
-    peerConnection.onicecandidate =
-        event => {
-
-            if (
-                event.candidate &&
-                currentRoom
-            ) {
-
-                socket.emit(
-                    'ice-candidate',
-                    {
-
-                        candidate:
-                            event.candidate,
-
-                        room:
-                            currentRoom,
-
-                        sender:
-                            currentUser
-
-                    }
-                );
-
-            }
-
-        };
-
-
-    peerConnection.onconnectionstatechange =
-        () => {
-
-            if (!peerConnection) {
-                return;
-            }
-
-            const state =
-                peerConnection.connectionState;
-
-            console.log(
-                'WebRTC:',
-                state
-            );
-
-
-            if (
-                state === 'failed'
-            ) {
-
-                showToast(
-                    'A conexão WebRTC falhou.'
-                );
-
-            }
-
-        };
-
-
-    peerConnection.oniceconnectionstatechange =
-        () => {
-
-            if (!peerConnection) {
-                return;
-            }
-
-            console.log(
-                'ICE:',
-                peerConnection.iceConnectionState
-            );
-
-        };
-
-
-    videoSender = null;
-    screenAudioSender = null;
-
-}
-
-
-/* =====================================================
-   NEGOCIAÇÃO
-===================================================== */
-
-async function createAndSendOffer(
-    eventName = 'renegotiation-offer'
-) {
-
-    if (
-        !peerConnection ||
-        !currentRoom ||
-        !isInCall
-    ) {
-
-        return;
-
-    }
-
-
-    if (isMakingOffer) {
-        return;
-    }
-
-
-    try {
-
-        isMakingOffer =
-            true;
-
-
-        const offer =
-            await peerConnection.createOffer();
-
-
-        await peerConnection.setLocalDescription(
-            offer
-        );
-
-
-        socket.emit(
-            eventName,
-            {
-
-                offer:
-                    peerConnection.localDescription,
-
-                room:
-                    currentRoom,
-
-                sender:
-                    currentUser
-
-            }
-        );
-
-    } catch (error) {
-
-        console.error(
-            'Erro criando oferta:',
-            error
-        );
-
-    } finally {
-
-        isMakingOffer =
-            false;
-
-    }
-
-}
-
-
-async function renegotiate() {
-
-    await createAndSendOffer(
-        'renegotiation-offer'
-    );
-
-}
-
-
-/* =====================================================
-   INICIAR CALL
-===================================================== */
-
-async function startCall() {
-
-    if (
-        !currentRoom ||
-        !currentChatFriend ||
-        isInCall ||
-        isCalling
-    ) {
-
-        return;
-
-    }
-
-
-    if (
-        !navigator.mediaDevices ||
-        !navigator.mediaDevices.getUserMedia
-    ) {
-
-        alert(
-            'Seu navegador não disponibiliza acesso ao microfone.'
-        );
-
-        return;
-
-    }
-
-
-    try {
-
-        localStream =
-            await navigator.mediaDevices
-                .getUserMedia({
-
-                    audio: true,
-
-                    video: false
-
-                });
-
-
-        await setupPeerConnection();
-
-
-        const offer =
-            await peerConnection.createOffer();
-
-
-        await peerConnection.setLocalDescription(
-            offer
-        );
-
-
-        isCalling =
-            true;
-
-
-        showOutgoingCall();
-
-
-        socket.emit(
-            'call-offer',
-            {
-
-                offer:
-                    peerConnection.localDescription,
-
-                room:
-                    currentRoom,
-
-                sender:
-                    currentUser
-
-            }
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            'Erro ao iniciar chamada:',
-            error
-        );
-
-
-        cleanupCall(false);
-
-
-        alert(
-            'Não foi possível acessar o microfone.\n\n' +
-            'Erro: ' +
-            error.message
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   MODAL CHAMANDO
-===================================================== */
-
-function showOutgoingCall() {
-
-    document.getElementById(
-        'outgoing-text'
-    ).innerText =
-        `Chamando ${currentChatFriend}...`;
-
-
-    document.getElementById(
-        'outgoing-call-modal'
-    ).style.display =
-        'flex';
-
-}
-
-
-function hideOutgoingCall() {
-
-    document.getElementById(
-        'outgoing-call-modal'
-    ).style.display =
-        'none';
-
-}
-
-
-/* =====================================================
-   MODAL RECEBENDO
-===================================================== */
-
-function showIncomingCall(data) {
-
-    pendingIncomingOffer =
-        data;
-
-    isIncomingPending =
-        true;
-
-
-    document.getElementById(
-        'incoming-avatar'
-    ).innerHTML =
-        createAvatarHTML(
-            data.avatar || '',
-            data.sender,
-            true
-        );
-
-
-    document.getElementById(
-        'incoming-title'
-    ).innerText =
-        data.sender;
-
-
-    document.getElementById(
-        'incoming-text'
-    ).innerText =
-        'está ligando para você';
-
-
-    document.getElementById(
-        'incoming-call-modal'
-    ).style.display =
-        'flex';
-
-}
-
-
-function hideIncomingCall() {
-
-    document.getElementById(
-        'incoming-call-modal'
-    ).style.display =
-        'none';
-
-}
-
-
-/* =====================================================
-   ATENDER
-===================================================== */
-
-async function acceptIncomingCall() {
-
-    const data =
-        pendingIncomingOffer;
-
-
-    if (!data) {
-        return;
-    }
-
-
-    hideIncomingCall();
-
-    isIncomingPending =
-        false;
-
-
-    const incomingFriend =
-        data.sender;
-
-
-    if (
-        incomingFriend &&
-        incomingFriend !== currentChatFriend
-    ) {
-
-        try {
-
-            const res =
-    await fetch(
-        `${API_URL}/user/${encodeURIComponent(incomingFriend)}`
-    );
-            const user =
-                res.ok
-                    ? await res.json()
-                    : {
-                        avatar: ''
-                    };
-
-
-            openChat(
-                incomingFriend,
-                user.avatar || ''
-            );
-
-        } catch {
-
-            openChat(
-                incomingFriend,
-                ''
-            );
-
-        }
-
-    }
-
-
-    currentRoom =
-        data.room;
-
-
-    if (
-        !navigator.mediaDevices ||
-        !navigator.mediaDevices.getUserMedia
-    ) {
-
-        showToast(
-            'Seu navegador não permite acesso ao microfone.'
-        );
-
-        socket.emit(
-            'call-rejected',
-            {
-
-                room:
-                    data.room,
-
-                sender:
-                    currentUser
-
-            }
-        );
-
-        pendingIncomingOffer =
-            null;
-
-        return;
-
-    }
-
-
-    try {
-
-        localStream =
-            await navigator.mediaDevices
-                .getUserMedia({
-
-                    audio: true,
-
-                    video: false
-
-                });
-
-
-        await setupPeerConnection();
-
-
-        await peerConnection
-            .setRemoteDescription(
-                new RTCSessionDescription(
-                    data.offer
-                )
-            );
-
-
-        await flushPendingIce();
-
-
-        const answer =
-            await peerConnection
-                .createAnswer();
-
-
-        await peerConnection
-            .setLocalDescription(
-                answer
-            );
-
-
-        socket.emit(
-            'call-answer',
-            {
-
-                answer:
-                    peerConnection.localDescription,
-
-                room:
-                    data.room,
-
-                sender:
-                    currentUser
-
-            }
-        );
-
-
-        socket.emit(
-            'call-accepted',
-            {
-
-                room:
-                    data.room,
-
-                sender:
-                    currentUser
-
-            }
-        );
-
-
-        setInCallUI(true);
-
-
-    } catch (error) {
-
-        console.error(
-            'Erro ao atender:',
-            error
-        );
-
-
-        cleanupCall(false);
-
-
-        socket.emit(
-            'call-rejected',
-            {
-
-                room:
-                    data.room,
-
-                sender:
-                    currentUser
-
-            }
-        );
-
-    }
-
-
-    pendingIncomingOffer =
-        null;
-
-}
-
-
-/* =====================================================
-   RECUSAR
-===================================================== */
-
-function rejectIncomingCall() {
-
-    const data =
-        pendingIncomingOffer;
-
-
-    if (!data) {
-        return;
-    }
-
-
-    hideIncomingCall();
-
-
-    isIncomingPending =
-        false;
-
-
-    pendingIncomingOffer =
-        null;
-
-
-    socket.emit(
-        'call-rejected',
-        {
-
-            room:
-                data.room,
-
-            sender:
-                currentUser
-
-        }
-    );
-
-
-    showToast(
-        'Chamada recusada.'
-    );
-
-}
-
-
-/* =====================================================
-   CANCELAR
-===================================================== */
-
-function cancelOutgoingCall() {
-
-    if (!isCalling) {
-        return;
-    }
-
-
-    const room =
-        currentRoom;
-
-
-    isCalling =
-        false;
-
-
-    hideOutgoingCall();
-
-
-    cleanupCall(false);
-
-
-    socket.emit(
-        'call-cancelled',
-        {
-
-            room:
-                room,
-
-            sender:
-                currentUser
-
-        }
-    );
-
-
-    setInCallUI(false);
-
-
-    showToast(
-        'Chamada cancelada.'
-    );
-
-}
-
-
-/* =====================================================
-   UI CALL
-===================================================== */
-
-function setInCallUI(active) {
-
-    isInCall =
-        active;
-
-
-    document.getElementById(
-        'call-action-btn'
-    ).style.display =
-        active
-            ? 'none'
-            : (
-                currentChatFriend
-                    ? 'block'
-                    : 'none'
-            );
-
-
-    document.getElementById(
-        'hangup-action-btn'
-    ).style.display =
-        active
-            ? 'block'
-            : 'none';
-
-
-    document.getElementById(
-        'screen-action-btn'
-    ).style.display =
-        active
-            ? 'block'
-            : 'none';
-
-
-    document.getElementById(
-        'call-banner'
-    ).style.display =
-        active
-            ? 'flex'
-            : 'none';
-
-
-    if (!active) {
-
-        hideRemoteScreen();
-
-    }
-
-}
-
-
-/* =====================================================
-   SCREEN SHARE
-===================================================== */
-
-function canShareScreen() {
-
-    return !!(
-        navigator.mediaDevices &&
-        typeof navigator.mediaDevices.getDisplayMedia ===
-            'function'
-    );
-
-}
-
-
-async function toggleScreenShare() {
-
-    if (
-        !peerConnection ||
-        !isInCall
-    ) {
-
-        showToast(
-            'Você precisa estar em uma chamada.'
-        );
-
-        return;
-
-    }
-
-
-    if (isSharingScreen) {
-
-        await stopScreenShare();
-
-        return;
-
-    }
-
-
-    if (!canShareScreen()) {
-
-        alert(
-            'Este navegador/app não disponibiliza compartilhamento de tela.'
-        );
-
-        return;
-
-    }
-
-
-    const button =
-        document.getElementById(
-            'screen-action-btn'
-        );
-
-
-    try {
-
-        const quality =
-            getSelectedScreenQuality();
-
-
-        screenStream =
-            await navigator.mediaDevices
-                .getDisplayMedia({
-
-                    video: {
-
-                        width: {
-                            ideal:
-                                quality.width,
-
-                            max:
-                                quality.width
-                        },
-
-                        height: {
-
-                            ideal:
-                                quality.height,
-
-                            max:
-                                quality.height
-                        },
-
-                        frameRate: {
-                            ideal: 30,
-                            max: 60
-                        }
-
-                    },
-
-                    audio: true
-
-                });
-
-
-        const videoTrack =
-            screenStream
-                .getVideoTracks()[0];
-
-
-        if (!videoTrack) {
-
-            throw new Error(
-                'Nenhuma tela foi selecionada.'
-            );
-
-        }
-
-
-        try {
-
-            await videoTrack.applyConstraints({
-
-                width: {
-                    ideal:
-                        quality.width,
-
-                    max:
-                        quality.width
-                },
-
-                height: {
-                    ideal:
-                        quality.height,
-
-                    max:
-                        quality.height
-                },
-
-                frameRate: {
-                    ideal: 30,
-                    max: 60
-                }
-
-            });
-
-        } catch (error) {
-
-            console.warn(
-                'Constraints:',
-                error
-            );
-
-        }
-
-
-        videoSender =
-            peerConnection
-                .getSenders()
-                .find(
-                    sender =>
-                        sender.track &&
-                        sender.track.kind ===
-                            'video'
-                );
-
-
-        if (!videoSender) {
-
-            videoSender =
-                peerConnection.addTrack(
-                    videoTrack,
-                    screenStream
-                );
-
-        } else {
-
-            await videoSender.replaceTrack(
-                videoTrack
-            );
-
-        }
-
-
-        const screenAudioTrack =
-            screenStream
-                .getAudioTracks()[0];
-
-
-        if (screenAudioTrack) {
-
-            screenAudioSender =
-                peerConnection
-                    .getSenders()
-                    .find(
-                        sender =>
-                            sender.track &&
-                            sender.track.kind ===
-                                'audio' &&
-                            sender.track !==
-                                localStream
-                                    ?.getAudioTracks()[0]
-                    );
-
-
-            if (!screenAudioSender) {
-
-                screenAudioSender =
-                    peerConnection.addTrack(
-                        screenAudioTrack,
-                        screenStream
-                    );
-
-            } else {
-
-                await screenAudioSender
-                    .replaceTrack(
-                        screenAudioTrack
-                    );
-
-            }
-
-        }
-
-
-        try {
-
-            const parameters =
-                videoSender.getParameters();
-
-
-            if (!parameters.encodings) {
-
-                parameters.encodings = [
-                    {}
-                ];
-
-            }
-
-
-            parameters.encodings[0].maxBitrate =
-                quality.bitrate;
-
-
-            parameters.encodings[0].maxFramerate =
-                30;
-
-
-            await videoSender.setParameters(
-                parameters
-            );
-
-        } catch (error) {
-
-            console.warn(
-                'Bitrate:',
-                error
-            );
-
-        }
-
-
-        isSharingScreen =
-            true;
-
-
-        button.innerText =
-            `🛑 Parar transmissão (${quality.height}p)`;
-
-
-        button.style.background =
-            '#ed4245';
-
-
-        showToast(
-            `Transmitindo em ${quality.height}p`
-        );
-
-
-        await renegotiate();
-
-
-        videoTrack.onended =
-            async () => {
-
-                if (isSharingScreen) {
-
-                    await stopScreenShare();
-
-                }
-
-            };
-
-
-    } catch (error) {
-
-        console.error(
-            'Erro ao compartilhar:',
-            error
-        );
-
-
-        if (
-            error.name ===
-            'NotAllowedError'
-        ) {
-
-            showToast(
-                'Compartilhamento cancelado.'
-            );
-
-        } else {
-
-            alert(
-                'Não foi possível compartilhar a tela.\n\n' +
-                'Erro: ' +
-                error.message
-            );
-
-        }
-
-
-        if (screenStream) {
-
-            screenStream
-                .getTracks()
-                .forEach(
-                    track => {
-
-                        try {
-                            track.stop();
-                        } catch {}
-
-                    }
-                );
-
-            screenStream =
-                null;
-
-        }
-
-
-        isSharingScreen =
-            false;
-
-        videoSender =
-            null;
-
-        screenAudioSender =
-            null;
-
-
-        button.innerText =
-            '🖥️ Compartilhar Tela';
-
-        button.style.background =
-            '#5865f2';
-
-    }
-
-}
-
-
-/* =====================================================
-   PARAR SCREEN SHARE
-===================================================== */
-
-async function stopScreenShare() {
-
-    if (!peerConnection) {
-
-        isSharingScreen =
-            false;
-
-        return;
-
-    }
-
-
-    if (videoSender) {
-
-        try {
-
-            await videoSender.replaceTrack(
-                null
-            );
-
-        } catch {}
-
-    }
-
-
-    if (screenAudioSender) {
-
-        try {
-
-            await screenAudioSender.replaceTrack(
-                null
-            );
-
-        } catch {}
-
-    }
-
-
-    if (screenStream) {
-
-        screenStream
-            .getTracks()
-            .forEach(
-                track => {
-
-                    try {
-
-                        track.onended =
-                            null;
-
-                        track.stop();
-
-                    } catch {}
-
-                }
-            );
-
-        screenStream =
-            null;
-
-    }
-
-
-    videoSender =
-        null;
-
-    screenAudioSender =
-        null;
-
-    isSharingScreen =
-        false;
-
-
-    const button =
-        document.getElementById(
-            'screen-action-btn'
-        );
-
-
-    button.innerText =
-        '🖥️ Compartilhar Tela';
-
-    button.style.background =
-        '#5865f2';
-
-
-    hideRemoteScreen();
-
-
-    if (isInCall) {
-
-        await renegotiate();
-
-    }
-
-}
-
-
-/* =====================================================
-   ESCONDER TELA REMOTA
-===================================================== */
-
-function hideRemoteScreen() {
-
-    const container =
-        document.getElementById(
-            'screen-share-container'
-        );
-
-    const video =
-        document.getElementById(
-            'remote-screen'
-        );
-
-
-    try {
-
-        video.pause();
-
-    } catch {}
-
-
-    video.srcObject =
-        null;
-
-
-    container.classList.remove(
-        'mobile-fullscreen'
-    );
-
-    document.body.classList.remove(
-        'fullscreen-active'
-    );
-
-
-    container.style.display =
-        'none';
-
-
-    updateFullscreenButton();
-
-}
-
-
-/* =====================================================
-   LIMPAR CALL
-===================================================== */
-
-function cleanupCall(
-    notifyRemote = false
-) {
-
-    if (screenStream) {
-
-        screenStream
-            .getTracks()
-            .forEach(
-                track => {
-
-                    try {
-
-                        track.onended =
-                            null;
-
-                        track.stop();
-
-                    } catch {}
-
-                }
-            );
-
-        screenStream =
-            null;
-
-    }
-
-
-    if (localStream) {
-
-        localStream
-            .getTracks()
-            .forEach(
-                track => {
-
-                    try {
-                        track.stop();
-                    } catch {}
-
-                }
-            );
-
-        localStream =
-            null;
-
-    }
-
-
-    if (peerConnection) {
-
-        try {
-
-            peerConnection.ontrack =
-                null;
-
-            peerConnection.onicecandidate =
-                null;
-
-            peerConnection.close();
-
-        } catch {}
-
-        peerConnection =
-            null;
-
-    }
-
-
-    videoSender =
-        null;
-
-    screenAudioSender =
-        null;
-
-    pendingIceCandidates =
-        [];
-
-    isSharingScreen =
-        false;
-
-    isMakingOffer =
-        false;
-
-
-    hideRemoteScreen();
-
-
-    document.getElementById(
-        'remote-audio'
-    ).srcObject =
-        null;
-
-
-    const screenButton =
-        document.getElementById(
-            'screen-action-btn'
-        );
-
-
-    if (screenButton) {
-
-        screenButton.innerText =
-            '🖥️ Compartilhar Tela';
-
-        screenButton.style.background =
-            '#5865f2';
-
-    }
-
-
-    if (
-        notifyRemote &&
-        currentRoom
-    ) {
-
-        socket.emit(
-            'hang-up',
-            {
-                room:
-                    currentRoom
-            }
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   DESLIGAR
-===================================================== */
-
-function endCall() {
-
-    const room =
-        currentRoom;
-
-
-    if (isCalling) {
-
-        isCalling =
-            false;
-
-        hideOutgoingCall();
-
-        cleanupCall(false);
-
-
-        socket.emit(
-            'call-cancelled',
-            {
-
-                room:
-                    room,
-
-                sender:
-                    currentUser
-
-            }
-        );
-
-
-        setInCallUI(false);
-
-        return;
-
-    }
-
-
-    if (!isInCall) {
-
-        cleanupCall(false);
-
-        return;
-
-    }
-
-
-    cleanupCall(false);
-
-
-    socket.emit(
-        'hang-up',
-        {
-
-            room:
-                room
-
-        }
-    );
-
-
-    setInCallUI(false);
-
-}
-
-
-/* =====================================================
-   SOCKET CALL
-===================================================== */
-
-socket.on(
-    'call-offer',
-    data => {
-
-        if (
-            !data ||
-            !data.room
-        ) {
-
-            return;
-
-        }
-
-
-        if (
-            isInCall ||
-            isCalling ||
-            isIncomingPending
-        ) {
-
-            return;
-
-        }
-
-
-        showIncomingCall(
-            data
-        );
-
-    }
-);
-
-
-socket.on(
-    'call-answer',
-    async data => {
-
-        if (
-            !peerConnection ||
-            !data ||
-            data.room !== currentRoom
-        ) {
-
-            return;
-
-        }
-
-
-        try {
-
-            await peerConnection
-                .setRemoteDescription(
-                    new RTCSessionDescription(
-                        data.answer
-                    )
-                );
-
-
-            await flushPendingIce();
-
-
-            isCalling =
-                false;
-
-
-            hideOutgoingCall();
-
-
-            setInCallUI(
-                true
-            );
-
-
-        } catch (error) {
-
-            console.error(
-                'Erro answer:',
-                error
-            );
-
-        }
-
-    }
-);
-
-
-socket.on(
-    'call-accepted',
-    data => {
-
-        if (
-            data &&
-            data.room === currentRoom &&
-            isCalling
-        ) {
-
-            showToast(
-                'Chamada aceita!'
-            );
-
-        }
-
-    }
-);
-
-
-socket.on(
-    'call-rejected',
-    data => {
-
-        if (
-            !data ||
-            data.room !== currentRoom
-        ) {
-
-            return;
-
-        }
-
-
-        isCalling =
-            false;
-
-
-        hideOutgoingCall();
-
-
-        cleanupCall(false);
-
-
-        setInCallUI(
-            false
-        );
-
-
-        showToast(
-            `${data.sender || 'O usuário'} recusou a chamada.`
-        );
-
-    }
-);
-
-
-socket.on(
-    'call-cancelled',
-    data => {
-
-        if (
-            !data ||
-            data.room !== currentRoom
-        ) {
-
-            return;
-
-        }
-
-
-        if (isIncomingPending) {
-
-            hideIncomingCall();
-
-            isIncomingPending =
-                false;
-
-            pendingIncomingOffer =
-                null;
-
-            showToast(
-                'A chamada foi cancelada.'
-            );
-
-        }
-
-
-        if (isInCall) {
-
-            cleanupCall(false);
-
-            setInCallUI(
-                false
-            );
-
-            showToast(
-                'A chamada foi encerrada.'
-            );
-
-        }
-
-    }
-);
-
-
-/* =====================================================
-   RENEGOCIAÇÃO
-===================================================== */
-
-socket.on(
-    'renegotiation-offer',
-    async data => {
-
-        if (
-            !peerConnection ||
-            !isInCall ||
-            !data ||
-            data.room !== currentRoom
-        ) {
-
-            return;
-
-        }
-
-
-        try {
-
-            await peerConnection
-                .setRemoteDescription(
-                    new RTCSessionDescription(
-                        data.offer
-                    )
-                );
-
-
-            await flushPendingIce();
-
-
-            const answer =
-                await peerConnection
-                    .createAnswer();
-
-
-            await peerConnection
-                .setLocalDescription(
-                    answer
-                );
-
-
-            socket.emit(
-                'renegotiation-answer',
-                {
-
-                    answer:
-                        peerConnection.localDescription,
-
-                    room:
-                        currentRoom,
-
-                    sender:
-                        currentUser
-
-                }
-            );
-
-        } catch (error) {
-
-            console.error(
-                'Erro renegociação:',
-                error
-            );
-
-        }
-
-    }
-);
-
-
-socket.on(
-    'renegotiation-answer',
-    async data => {
-
-        if (
-            !peerConnection ||
-            !data ||
-            data.room !== currentRoom
-        ) {
-
-            return;
-
-        }
-
-
-        try {
-
-            await peerConnection
-                .setRemoteDescription(
-                    new RTCSessionDescription(
-                        data.answer
-                    )
-                );
-
-
-            await flushPendingIce();
-
-        } catch (error) {
-
-            console.error(
-                'Erro renegociação answer:',
-                error
-            );
-
-        }
-
-    }
-);
-
-
-/* =====================================================
-   ICE
-===================================================== */
-
-socket.on(
-    'ice-candidate',
-    async data => {
-
-        if (
-            !data ||
-            data.room !== currentRoom ||
-            !peerConnection
-        ) {
-
-            return;
-
-        }
-
-
-        try {
-
-            if (
-                peerConnection
-                    .remoteDescription
-            ) {
-
-                await peerConnection
-                    .addIceCandidate(
-                        new RTCIceCandidate(
-                            data.candidate
-                        )
-                    );
-
-            } else {
-
-                pendingIceCandidates.push(
-                    data.candidate
-                );
-
-            }
-
-        } catch (error) {
-
-            console.error(
-                'Erro ICE:',
-                error
-            );
-
-        }
-
-    }
-);
-
-
-async function flushPendingIce() {
-
-    if (
-        !peerConnection ||
-        !peerConnection.remoteDescription
-    ) {
-
-        return;
-
-    }
-
-
-    const candidates =
-        [
-            ...pendingIceCandidates
-        ];
-
-
-    pendingIceCandidates =
-        [];
-
-
-    for (
-        const candidate
-        of candidates
-    ) {
-
-        try {
-
-            await peerConnection
-                .addIceCandidate(
-                    new RTCIceCandidate(
-                        candidate
-                    )
-                );
-
-        } catch (error) {
-
-            console.error(
-                'Erro ICE pendente:',
-                error
-            );
-
-        }
-
-    }
-
-}
-
-
-/* =====================================================
-   HANG UP REMOTO
-===================================================== */
-
-socket.on(
-    'hang-up',
-    () => {
-
-        cleanupCall(false);
-
-        isCalling =
-            false;
-
-        hideOutgoingCall();
-
-        hideIncomingCall();
-
-        isIncomingPending =
-            false;
-
-        pendingIncomingOffer =
-            null;
-
-        setInCallUI(
-            false
-        );
-
-        showToast(
-            'A chamada foi encerrada.'
-        );
-
-    }
-);
-
-
-/* =====================================================
-   FULLSCREEN
-   PC + ANDROID + IPHONE/IPAD
-===================================================== */
-
-async function toggleFullscreen() {
-
-    const container =
-        document.getElementById(
-            'screen-share-container'
-        );
-
-    const video =
-        document.getElementById(
-            'remote-screen'
-        );
-
-
-    try {
-
-        /* =========================================
-           JÁ ESTÁ EM FULLSCREEN NATIVO
-        ========================================= */
-
-        if (
-            document.fullscreenElement ||
-            document.webkitFullscreenElement
-        ) {
-
-            if (
-                document.exitFullscreen
-            ) {
-
-                await document.exitFullscreen();
-
-            } else if (
-                document.webkitExitFullscreen
-            ) {
-
-                document.webkitExitFullscreen();
-
-            }
-
-            return;
-
-        }
-
-
-        /* =========================================
-           JÁ ESTÁ NO FULLSCREEN VISUAL
-        ========================================= */
-
-        if (
-            container.classList.contains(
-                'mobile-fullscreen'
-            )
-        ) {
-
-            exitMobileFullscreen();
-
-            return;
-
-        }
-
-
-        /* =========================================
-           IPHONE / IPAD
-        ========================================= */
-
-        const isIOS =
-            /iPhone|iPad|iPod/i.test(
-                navigator.userAgent
-            );
-
-
-        if (isIOS) {
-
-            /*
-             * Safari iOS possui fullscreen
-             * próprio para elementos de vídeo.
-             */
-
-            if (
-                typeof video.webkitEnterFullscreen ===
-                'function'
-            ) {
-
-                video.webkitEnterFullscreen();
-
-                return;
-
-            }
-
-            /*
-             * Fallback caso o navegador não
-             * disponibilize fullscreen nativo.
-             */
-
-            enterMobileFullscreen();
-
-            return;
-
-        }
-
-
-        /* =========================================
-           ANDROID / CHROME / EDGE
-        ========================================= */
-
-        if (
-            typeof container.requestFullscreen ===
-            'function'
-        ) {
-
-            await container.requestFullscreen();
-
-            updateFullscreenButton();
-
-            return;
-
-        }
-
-
-        /* =========================================
-           SAFARI / WEBKIT
-        ========================================= */
-
-        if (
-            typeof container.webkitRequestFullscreen ===
-            'function'
-        ) {
-
-            container.webkitRequestFullscreen();
-
-            updateFullscreenButton();
-
-            return;
-
-        }
-
-
-        /* =========================================
-           FALLBACK
-        ========================================= */
-
-        enterMobileFullscreen();
-
-    } catch (error) {
-
-        console.error(
-            'Erro fullscreen:',
-            error
-        );
-
-        /*
-         * Se o fullscreen nativo falhar,
-         * entra no modo fullscreen visual.
-         */
-
-        enterMobileFullscreen();
-
-    }
-
-}
-
-
-/* =====================================================
-   FULLSCREEN VISUAL MOBILE
-===================================================== */
-
-function enterMobileFullscreen() {
-
-    const container =
-        document.getElementById(
-            'screen-share-container'
-        );
-
-    container.classList.add(
-        'mobile-fullscreen'
-    );
-
-    document.body.classList.add(
-        'fullscreen-active'
-    );
-
-    updateFullscreenButton();
-
-}
-
-
-/* =====================================================
-   SAIR FULLSCREEN VISUAL
-===================================================== */
-
-function exitMobileFullscreen() {
-
-    const container =
-        document.getElementById(
-            'screen-share-container'
-        );
-
-    container.classList.remove(
-        'mobile-fullscreen'
-    );
-
-    document.body.classList.remove(
-        'fullscreen-active'
-    );
-
-    updateFullscreenButton();
-
-}
-
-
-/* =====================================================
-   ATUALIZAR BOTÃO
-===================================================== */
-
-function updateFullscreenButton() {
-
-    const button =
-        document.querySelector(
-            '.fullscreen-btn'
-        );
-
-    if (!button) {
-        return;
-    }
-
-
-    const container =
-        document.getElementById(
-            'screen-share-container'
-        );
-
-
-    const isFullscreen =
-        !!(
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            container.classList.contains(
-                'mobile-fullscreen'
-            )
-        );
-
-
-    if (isFullscreen) {
-
-        button.innerText =
-            '✕';
-
-        button.title =
-            'Sair da tela cheia';
-
-    } else {
-
-        button.innerText =
-            '⛶';
-
-        button.title =
-            'Tela cheia';
-
-    }
-
-}
-
-
-/* =====================================================
-   EVENTOS FULLSCREEN
-===================================================== */
-
-document.addEventListener(
-    'fullscreenchange',
-    () => {
-
-        updateFullscreenButton();
-
-    }
-);
-
-
-document.addEventListener(
-    'webkitfullscreenchange',
-    () => {
-
-        updateFullscreenButton();
-
-    }
-);
-
-
-/* =====================================================
-   DETECTAR SAÍDA DO FULLSCREEN DO IPHONE
-===================================================== */
-
-document.addEventListener(
-    'webkitendfullscreen',
-    () => {
-
-        updateFullscreenButton();
-
-    }
-);
-
-
-/* =====================================================
-   ESC PARA SAIR
-===================================================== */
-
-document.addEventListener(
-    'keydown',
-    event => {
-
-        if (
-            event.key === 'Escape'
-        ) {
-
-            const container =
-                document.getElementById(
-                    'screen-share-container'
-                );
-
-
-            if (
-                container.classList.contains(
-                    'mobile-fullscreen'
-                )
-            ) {
-
-                exitMobileFullscreen();
-
-            }
-
-        }
-
-    }
-);
-
-
-/* =====================================================
-   TOQUE DUPLO NO VÍDEO
-   ENTRA/SAI DA TELA CHEIA NO CELULAR
-===================================================== */
-
-let lastVideoTap = 0;
-
-document
-    .getElementById('remote-screen')
-    .addEventListener(
-        'touchend',
-        event => {
-
-            const now =
-                Date.now();
-
-
-            if (
-                now - lastVideoTap <
-                300
-            ) {
-
-                event.preventDefault();
-
-                toggleFullscreen();
-
-            }
-
-
-            lastVideoTap =
-                now;
-
-        },
-        {
-            passive: false
-        }
-    );
-
-
-/* =====================================================
-   AMIGOS SOCKET
-===================================================== */
-
-socket.on(
-    'refresh friends',
-    () => {
-
-        loadFriends();
-
-    }
-);
-
-
-socket.on(
-    'close chat with',
-    userWhoRemoved => {
-
-        if (
-            currentChatFriend ===
-            userWhoRemoved
-        ) {
-
-            closeActiveChat();
-
-            if (isMobile()) {
-
-                document
-                    .getElementById('sidebar')
-                    .classList
-                    .remove('mobile-hidden');
-
-                document
-                    .getElementById('chat-area')
-                    .classList
-                    .add('mobile-hidden');
-
-            }
-
-            alert(
-                `O usuário ${userWhoRemoved} desfez a amizade com você.`
-            );
-
-        }
-
-
-        loadFriends();
-
-    }
-);
-
-
-/* =====================================================
-   HISTÓRICO
-===================================================== */
-
-socket.on(
-    'load private history',
-    history => {
-
-        const messages =
-            document.getElementById(
-                'messages'
-            );
-
-
-        messages.innerHTML =
-            '';
-
-
-        history.forEach(
-            data => {
-
-                appendMessage(
-                    data
-                );
-
-            }
-        );
-
-    }
-);
 
 
 /* =====================================================
    MENSAGENS
 ===================================================== */
 
-socket.on(
-    'private message',
-    data => {
+function sendMessage(){
 
-        if (
-            data.sender !== currentUser &&
-            data.sender !== currentChatFriend
-        ) {
+    const input =
+        $('message-input');
 
-            unreadCounts[
-                data.sender
-            ] =
-                (
-                    unreadCounts[
-                        data.sender
-                    ] || 0
-                ) + 1;
+    const message =
+        input.value.trim();
 
+    if(!message || !currentFriend){
+        return;
+    }
 
-            loadFriends();
-
+    socket.emit(
+        'private message',
+        {
+            sender:currentUser,
+            receiver:currentFriend,
+            message,
+            room:currentRoom
         }
+    );
+
+    input.value = '';
+    input.focus();
+}
 
 
-        if (
-            data.sender === currentUser ||
-            data.sender === currentChatFriend
-        ) {
+$('message-input').addEventListener(
+    'keydown',
+    event=>{
 
-            appendMessage(
-                data
-            );
-
+        if(event.key === 'Enter'){
+            event.preventDefault();
+            sendMessage();
         }
 
     }
 );
 
 
-function appendMessage(data) {
+/* =====================================================
+   SOCKET - HISTÓRICO
+===================================================== */
 
-    const messages =
-        document.getElementById(
-            'messages'
+socket.on(
+    'load private history',
+    messages=>{
+
+        $('messages').innerHTML = '';
+
+        messages.forEach(
+            addMessage
         );
 
-
-    const li =
-        document.createElement(
-            'li'
-        );
+        scrollMessages();
+    }
+);
 
 
-    li.className =
-        'message-row';
+/* =====================================================
+   SOCKET - NOVA MENSAGEM
+===================================================== */
+
+socket.on(
+    'private message',
+    data=>{
+
+        if(
+            data.room === currentRoom
+        ){
+
+            addMessage(data);
+
+            scrollMessages();
+
+        }else{
+
+            toast(
+                `Nova mensagem de ${data.sender}`
+            );
+        }
+
+    }
+);
 
 
-    li.innerHTML = `
+/* =====================================================
+   SOCKET - ATUALIZAR AMIGOS
+===================================================== */
 
-        ${createAvatarHTML(
-            data.avatar,
-            data.sender
-        )}
+socket.on(
+    'refresh friends',
+    ()=>{
+        loadFriends();
+    }
+);
 
-        <div class="message-content">
 
-            <div class="msg-header-line">
+/* =====================================================
+   ADICIONAR MENSAGEM
+===================================================== */
 
-                <span class="msg-user">
-                    ${data.sender}
-                </span>
+function addMessage(data){
 
-            </div>
+    const div =
+        document.createElement('div');
 
-            <span class="msg-text"></span>
+    div.className = 'message';
 
+    div.innerHTML = `
+        <div class="avatar">
+            ${avatarHTML(
+                data.avatar,
+                data.sender
+            )}
         </div>
 
+        <div class="message-body">
+
+            <div class="message-user">
+                ${escapeHTML(data.sender)}
+            </div>
+
+            <div class="message-text">
+                ${escapeHTML(data.message)}
+            </div>
+
+        </div>
     `;
 
-
-    li.querySelector(
-        '.msg-text'
-    ).textContent =
-        data.message;
+    $('messages').appendChild(div);
+}
 
 
-    messages.appendChild(
-        li
-    );
+function scrollMessages(){
 
+    const box = $('messages');
 
-    messages.scrollTop =
-        messages.scrollHeight;
-
+    box.scrollTop =
+        box.scrollHeight;
 }
 
 
 /* =====================================================
-   FECHAR PÁGINA
+   SEGURANÇA
 ===================================================== */
 
-window.addEventListener(
-    'beforeunload',
-    () => {
+function escapeHTML(text){
 
-        if (
-            (isInCall || isCalling) &&
-            currentRoom
-        ) {
-
-            socket.emit(
-                'hang-up',
-                {
-
-                    room:
-                        currentRoom
-
-                }
-            );
-
-        }
-
-    }
-);
+    return String(text || '')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+}
 
 
 /* =====================================================
-   REDIMENSIONAMENTO
+   SOCKET STATUS
 ===================================================== */
 
-window.addEventListener(
-    'resize',
-    () => {
+socket.on('connect',()=>{
 
-        if (!isMobile()) {
+    $('status').textContent =
+        '● conectado';
 
-            document
-                .getElementById('sidebar')
-                .classList
-                .remove('mobile-hidden');
+    $('status').style.color =
+        '#23a559';
 
-            document
-                .getElementById('chat-area')
-                .classList
-                .remove('mobile-hidden');
+    if(currentUser){
 
-        }
-
+        socket.emit(
+            'register user',
+            currentUser
+        );
     }
-);
+
+});
+
+
+socket.on('disconnect',()=>{
+
+    $('status').textContent =
+        '● desconectado';
+
+    $('status').style.color =
+        '#ed4245';
+
+});
+
+
+socket.on('connect_error',error=>{
+
+    console.error(
+        'Socket error:',
+        error
+    );
+
+    $('status').textContent =
+        '● erro';
+
+    $('status').style.color =
+        '#ed4245';
+});
 
 
 /* =====================================================
-   INICIALIZAÇÃO
+   INICIAR
 ===================================================== */
 
-loadMyProfile();
-
-loadFriends();
+loadMe();
 
 </script>
 
 </body>
 </html>
+```
