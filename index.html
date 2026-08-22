@@ -1451,6 +1451,7 @@ document.getElementById(
 ===================================================== */
 
 const socket = io('https://meudiscord.onrender.com');
+const API_URL = 'https://meudiscord.onrender.com';
 
 socket.emit(
     'register user',
@@ -1701,9 +1702,9 @@ async function loadMyProfile() {
     try {
 
         const res =
-            await fetch(
-                `/user/${encodeURIComponent(currentUser)}`
-            );
+    await fetch(
+        `${API_URL}/user/${encodeURIComponent(currentUser)}`
+    );
 
         const user =
             res.ok
@@ -1753,15 +1754,15 @@ function uploadAvatar(event) {
                 e.target.result;
 
             const res =
-                await fetch(
-                    '/update-avatar',
-                    {
-                        method: 'POST',
+    await fetch(
+        `${API_URL}/update-avatar`,
+        {
+            method: 'POST',
 
-                        headers: {
-                            'Content-Type':
-                                'application/json'
-                        },
+            headers: {
+                'Content-Type':
+                    'application/json'
+            },
 
                         body: JSON.stringify({
 
@@ -1833,9 +1834,9 @@ async function loadFriends() {
     try {
 
         const res =
-            await fetch(
-                `/friends/${encodeURIComponent(currentUser)}`
-            );
+    await fetch(
+        `${API_URL}/friends/${encodeURIComponent(currentUser)}`
+    );
 
         const data =
             await res.json();
@@ -2068,15 +2069,15 @@ async function addFriend() {
 
 
     const res =
-        await fetch(
-            '/add-friend',
-            {
-                method: 'POST',
+    await fetch(
+        `${API_URL}/add-friend`,
+        {
+            method: 'POST',
 
-                headers: {
-                    'Content-Type':
-                        'application/json'
-                },
+            headers: {
+                'Content-Type':
+                    'application/json'
+            },
 
                 body: JSON.stringify({
 
@@ -2122,15 +2123,15 @@ async function acceptFriend(
 ) {
 
     const res =
-        await fetch(
-            '/accept-friend',
-            {
-                method: 'POST',
+    await fetch(
+        `${API_URL}/accept-friend`,
+        {
+            method: 'POST',
 
-                headers: {
-                    'Content-Type':
-                        'application/json'
-                },
+            headers: {
+                'Content-Type':
+                    'application/json'
+            },
 
                 body: JSON.stringify({
 
@@ -2181,15 +2182,15 @@ async function removeFriend(
 
 
     const res =
-        await fetch(
-            '/remove-friend',
-            {
-                method: 'POST',
+    await fetch(
+        `${API_URL}/remove-friend`,
+        {
+            method: 'POST',
 
-                headers: {
-                    'Content-Type':
-                        'application/json'
-                },
+            headers: {
+                'Content-Type':
+                    'application/json'
+            },
 
                 body: JSON.stringify({
 
@@ -3035,10 +3036,9 @@ async function acceptIncomingCall() {
         try {
 
             const res =
-                await fetch(
-                    `/user/${encodeURIComponent(incomingFriend)}`
-                );
-
+    await fetch(
+        `${API_URL}/user/${encodeURIComponent(incomingFriend)}`
+    );
             const user =
                 res.ok
                     ? await res.json()
