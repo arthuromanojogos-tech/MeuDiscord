@@ -64,35 +64,45 @@ app.use(
    BANCO
 ====================================================== */
 
-const db =
-    new sqlite3.Database(
-        './database.db'
-    );
+const db = new sqlite3.Database(
+    './database.db',
+    err => {
+
+        if (err) {
+
+            console.error(
+                'Erro ao abrir banco:',
+                err
+            );
+
+            return;
+        }
+
+        console.log(
+            'Banco de dados conectado.'
+        );
+
+    }
+);
 
 
 /* ======================================================
    SESSÕES
 ====================================================== */
 
-const sessions =
-    new Map();
+const sessions = new Map();
 
 
-function createSession(
-    username
-) {
+function createSession(username) {
 
     const token =
-        crypto.randomBytes(
-            32
-        ).toString('hex');
+        crypto.randomBytes(32).toString('hex');
 
     sessions.set(
         token,
         {
             username,
-            createdAt:
-                Date.now()
+            createdAt: Date.now()
         }
     );
 
@@ -111,7 +121,7 @@ function getSession(req) {
 
     const match =
         cookies.match(
-            /chat_session=([^;]+)/
+            /(?:^|;\s*)chat_session=([^;]+)/
         );
 
     if (!match) {
@@ -119,9 +129,8 @@ function getSession(req) {
     }
 
     return (
-        sessions.get(
-            match[1]
-        ) || null
+        sessions.get(match[1]) ||
+        null
     );
 }
 
@@ -163,8 +172,8 @@ db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
             avatar TEXT DEFAULT ''
         )
     `);
@@ -172,18 +181,18 @@ db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS friendships (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user1 TEXT,
-            user2 TEXT,
-            status TEXT
+            user1 TEXT NOT NULL,
+            user2 TEXT NOT NULL,
+            status TEXT NOT NULL
         )
     `);
 
     db.run(`
         CREATE TABLE IF NOT EXISTS private_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sender TEXT,
-            receiver TEXT,
-            message TEXT
+            sender TEXT NOT NULL,
+            receiver TEXT NOT NULL,
+            message TEXT NOT NULL
         )
     `);
 
@@ -200,11 +209,9 @@ app.get(
 
         res.json({
             online: true,
-            server:
-                'Meu Discord',
+            server: 'Meu Discord',
             time:
-                new Date()
-                    .toISOString()
+                new Date().toISOString()
         });
 
     }
@@ -224,14 +231,11 @@ app.get(
 
         if (session) {
 
-            return res.redirect(
-                '/'
-            );
+            return res.redirect('/');
         }
 
         res.sendFile(
-            __dirname +
-            '/login.html'
+            __dirname + '/login.html'
         );
 
     }
@@ -248,21 +252,16 @@ app.post(
 
         const username =
             String(
-                req.body.username ||
-                ''
+                req.body.username || ''
             ).trim();
 
         const password =
             String(
-                req.body.password ||
-                ''
+                req.body.password || ''
             );
 
 
-        if (
-            !username ||
-            !password
-        ) {
+        if (!username || !password) {
 
             return res
                 .status(400)
@@ -272,9 +271,7 @@ app.post(
         }
 
 
-        if (
-            username.length < 3
-        ) {
+        if (username.length < 3) {
 
             return res
                 .status(400)
@@ -284,9 +281,7 @@ app.post(
         }
 
 
-        if (
-            password.length < 4
-        ) {
+        if (password.length < 4) {
 
             return res
                 .status(400)
@@ -335,6 +330,7 @@ app.post(
 
 
                         console.error(
+                            'Erro ao criar usuário:',
                             err
                         );
 
@@ -356,6 +352,7 @@ app.post(
         } catch (error) {
 
             console.error(
+                'Erro no cadastro:',
                 error
             );
 
@@ -380,21 +377,16 @@ app.post(
 
         const username =
             String(
-                req.body.username ||
-                ''
+                req.body.username || ''
             ).trim();
 
         const password =
             String(
-                req.body.password ||
-                ''
+                req.body.password || ''
             );
 
 
-        if (
-            !username ||
-            !password
-        ) {
+        if (!username || !password) {
 
             return res
                 .status(400)
@@ -421,6 +413,7 @@ app.post(
                 if (err) {
 
                     console.error(
+                        'Erro no login:',
                         err
                     );
 
@@ -467,11 +460,6 @@ app.post(
                         );
 
 
-                    /*
-                       Cookie compatível com HTTPS
-                       e acesso cross-origin.
-                    */
-
                     res.setHeader(
                         'Set-Cookie',
                         `chat_session=${token}; HttpOnly; Path=/; SameSite=None; Secure`
@@ -487,6 +475,7 @@ app.post(
                 } catch (error) {
 
                     console.error(
+                        'Erro ao verificar senha:',
                         error
                     );
 
@@ -544,17 +533,19 @@ app.post(
     '/logout',
     (req, res) => {
 
-        const cookies =
-            req.headers.cookie;
+        const session =
+            getSession(req);
 
+        if (session) {
 
-        if (cookies) {
+            const cookies =
+                req.headers.cookie;
 
             const match =
+                cookies &&
                 cookies.match(
-                    /chat_session=([^;]+)/
+                    /(?:^|;\s*)chat_session=([^;]+)/
                 );
-
 
             if (match) {
 
@@ -591,8 +582,7 @@ app.get(
     (req, res) => {
 
         res.sendFile(
-            __dirname +
-            '/index.html'
+            __dirname + '/index.html'
         );
 
     }
@@ -606,24 +596,21 @@ app.get(
 app.use(
     '/css',
     express.static(
-        __dirname +
-        '/css'
+        __dirname + '/css'
     )
 );
 
 app.use(
     '/js',
     express.static(
-        __dirname +
-        '/js'
+        __dirname + '/js'
     )
 );
 
 app.use(
     '/assets',
     express.static(
-        __dirname +
-        '/assets'
+        __dirname + '/assets'
     )
 );
 
@@ -641,8 +628,7 @@ app.post(
             req.username;
 
         const avatar =
-            req.body.avatar ||
-            '';
+            req.body.avatar || '';
 
 
         db.run(
@@ -660,6 +646,7 @@ app.post(
                 if (err) {
 
                     console.error(
+                        'Erro avatar:',
                         err
                     );
 
@@ -721,9 +708,7 @@ app.get(
                 }
 
 
-                res.json(
-                    user
-                );
+                res.json(user);
 
             }
         );
@@ -746,8 +731,7 @@ app.get(
 
 
         if (
-            username !==
-            req.username
+            username !== req.username
         ) {
 
             return res
@@ -798,8 +782,7 @@ app.get(
                         ) {
 
                             friends.push(
-                                row.user1 ===
-                                username
+                                row.user1 === username
                                     ? row.user2
                                     : row.user1
                             );
@@ -808,10 +791,8 @@ app.get(
 
 
                         if (
-                            row.status ===
-                                'pending' &&
-                            row.user2 ===
-                                username
+                            row.status === 'pending' &&
+                            row.user2 === username
                         ) {
 
                             pending.push(
@@ -834,9 +815,7 @@ app.get(
                             names.length === 0
                         ) {
 
-                            return callback(
-                                []
-                            );
+                            return callback([]);
                         }
 
 
@@ -861,8 +840,7 @@ app.get(
                             ) => {
 
                                 callback(
-                                    result ||
-                                    []
+                                    result || []
                                 );
 
                             }
@@ -913,8 +891,7 @@ app.post(
 
         const friendName =
             String(
-                req.body.friendName ||
-                ''
+                req.body.friendName || ''
             ).trim();
 
 
@@ -929,8 +906,7 @@ app.post(
 
 
         if (
-            username ===
-            friendName
+            username === friendName
         ) {
 
             return res
@@ -1092,8 +1068,7 @@ app.post(
 
         const friendName =
             String(
-                req.body.friendName ||
-                ''
+                req.body.friendName || ''
             ).trim();
 
 
@@ -1173,8 +1148,7 @@ app.post(
 
         const friendName =
             String(
-                req.body.friendName ||
-                ''
+                req.body.friendName || ''
             ).trim();
 
 
@@ -1344,15 +1318,11 @@ io.on(
                         r => {
 
                             if (
-                                r !==
-                                    socket.id &&
-                                r !==
-                                    socket.username
+                                r !== socket.id &&
+                                r !== socket.username
                             ) {
 
-                                socket.leave(
-                                    r
-                                );
+                                socket.leave(r);
 
                             }
 
@@ -1360,9 +1330,7 @@ io.on(
                     );
 
 
-                socket.join(
-                    room
-                );
+                socket.join(room);
 
 
                 const parts =
@@ -1491,8 +1459,7 @@ io.on(
 
                 if (
                     socket.username &&
-                    data.sender !==
-                        socket.username
+                    data.sender !== socket.username
                 ) {
 
                     return;
@@ -1566,9 +1533,7 @@ io.on(
                                         );
 
 
-                                if (
-                                    sockets
-                                ) {
+                                if (sockets) {
 
                                     for (
                                         const socketId
@@ -1586,11 +1551,9 @@ io.on(
 
                                         if (
                                             receiver &&
-                                            !receiver
-                                                .rooms
-                                                .has(
-                                                    data.room
-                                                )
+                                            !receiver.rooms.has(
+                                                data.room
+                                            )
                                         ) {
 
                                             receiver.emit(
@@ -1854,7 +1817,8 @@ io.on(
 
                 console.log(
                     'Socket desconectado:',
-                    username || socket.id
+                    username ||
+                    socket.id
                 );
 
             }
@@ -1865,12 +1829,37 @@ io.on(
 
 
 /* ======================================================
+   ERROS
+====================================================== */
+
+app.use(
+    (err, req, res, next) => {
+
+        console.error(
+            'Erro interno:',
+            err
+        );
+
+        if (res.headersSent) {
+            return next(err);
+        }
+
+        res
+            .status(500)
+            .send(
+                'Erro interno do servidor.'
+            );
+
+    }
+);
+
+
+/* ======================================================
    SERVIDOR
 ====================================================== */
 
 const PORT =
-    process.env.PORT ||
-    3000;
+    process.env.PORT || 3000;
 
 
 server.listen(
